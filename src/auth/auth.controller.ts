@@ -1,16 +1,16 @@
 import {
-  Controller,
-  Post,
   Body,
-  Res,
+  Controller,
+  Delete,
   Get,
   Param,
+  Post,
   Redirect,
-  Delete,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateUserDto } from '@/user/dto/createUserDto';
-import { UserDto } from '@/user/dto/userDto';
+import { CreateUserDto } from '@/user/dto/create-user.dto';
+import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
 import { Response } from 'express';
 import { Cookies } from '@/common/decorators/cookies.decorator';
 import { frontendServer, jwtSettings } from '@/common/configs/config';
@@ -24,8 +24,8 @@ export class AuthController {
   async registration(
     @Body() user: CreateUserDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<UserDto> {
-    const { userDto, refreshToken } = await this.authService.registration(user);
+  ): Promise<LoggedUserRdo> {
+    const { userRdo, refreshToken } = await this.authService.registration(user);
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       expires: new Date(
@@ -33,15 +33,15 @@ export class AuthController {
           Number(jwtSettings.refreshExpire.slice(0, -1)) * 24 * 60 * 60 * 1000,
       ),
     });
-    return userDto;
+    return userRdo;
   }
 
   @Post('login')
   async login(
     @Body() user: LoginDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<UserDto> {
-    const { userDto, refreshToken } = await this.authService.login(user);
+  ): Promise<LoggedUserRdo> {
+    const { userRdo, refreshToken } = await this.authService.login(user);
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       expires: new Date(
@@ -49,7 +49,7 @@ export class AuthController {
           Number(jwtSettings.refreshExpire.slice(0, -1)) * 24 * 60 * 60 * 1000,
       ),
     });
-    return userDto;
+    return userRdo;
   }
 
   @Get('verify/:code')
@@ -71,8 +71,8 @@ export class AuthController {
   async refresh(
     @Cookies('refreshToken') OldRefreshToken: string,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<UserDto | null> {
-    const { userDto, refreshToken } = await this.authService.refresh(
+  ): Promise<LoggedUserRdo | null> {
+    const { userRdo, refreshToken } = await this.authService.refresh(
       OldRefreshToken,
     );
     res.cookie('refreshToken', refreshToken, {
@@ -82,6 +82,6 @@ export class AuthController {
           Number(jwtSettings.refreshExpire.slice(0, -1)) * 24 * 60 * 60 * 1000,
       ),
     });
-    return userDto;
+    return userRdo;
   }
 }

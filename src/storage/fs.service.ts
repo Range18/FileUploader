@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import * as yauzl from 'yauzl';
 import { Entry, ZipFile } from 'yauzl';
-import { mkdir, stat, unlink } from 'fs/promises';
-import { extname, join } from 'path';
+import { mkdir, rename, stat, unlink } from 'fs/promises';
+import { extname, join, normalize } from 'path';
 import * as mime from 'mime';
 import { createWriteStream } from 'fs';
 import * as uuid4 from 'uuid4';
@@ -31,7 +31,7 @@ export class FsService {
         async (err, zipfile: ZipFile) => {
           if (err) {
             zipfile?.close();
-            await unlink(`.\\${file.path}`);
+            await this.deleteFile(`.\\${file.path}`);
             reject(err);
           }
 
@@ -46,7 +46,6 @@ export class FsService {
             // Directories
             if (/\/$/.test(entry.fileName)) {
               // Create the directory then read the next entry.
-              //TODO save current size
               const originalPath = entry.fileName;
               let pathToReplace = '';
 
@@ -79,10 +78,10 @@ export class FsService {
                 size: 0,
               });
 
-              await mkdir(join(unzipToDir, folderPath));
+              await this.mkDir(join(unzipToDir, folderPath));
 
               await this.fsRepository.save({
-                ownerUUID: userUUID,
+                driveUUID: userUUID,
                 originalName: entry.fileName.split('/').slice(-2, -1).at(-1),
                 name: genDirname,
                 destination: join(
@@ -136,20 +135,21 @@ export class FsService {
 
                 file.on('finish', async () => {
                   await this.fsRepository.save({
-                    ownerUUID: userUUID,
+                    driveUUID: userUUID,
                     originalName: entry.fileName.split('/').slice(-1).join(''),
                     name: filename,
-                    destination: join(FolderDestination + dest),
+                    destination: normalize(FolderDestination + dest),
                     type: mime.getType(join(unzipToDir, filepath)),
                     size: entry.uncompressedSize,
                   });
+
                   const folder = processedFolders.get(pathToReplace);
                   processedFolders.set(pathToReplace, {
                     name: folder.name,
                     path: folder.path,
                     size: folder.size + entry.uncompressedSize,
                   });
-                  console.log(processedFolders);
+
                   zipfile.readEntry();
                 });
 
@@ -163,21 +163,39 @@ export class FsService {
 
           zipfile?.on('error', async (err) => {
             zipfile?.close();
-            await unlink(`./${file.path}`);
+            await this.deleteFile(`./${file.path}`);
             reject(err);
           });
 
           zipfile?.on('end', async () => {
-            await unlink(`./${file.path}`);
+            await this.deleteFile(`./${file.path}`);
+
             for (const folder of processedFolders.values()) {
+              let totalSize: number = folder.size;
+
+              for (const anotherFolder of processedFolders.values()) {
+                if (
+                  folder != anotherFolder &&
+                  this.isParent(
+                    folder.name,
+                    anotherFolder.name,
+                    anotherFolder.path,
+                  )
+                ) {
+                  totalSize += anotherFolder.size;
+                }
+              }
+
               const fsEntity = await this.fsRepository.findOne({
                 where: {
                   name: folder.name,
                 },
               });
-              fsEntity.size = folder.size;
+
+              fsEntity.size = totalSize;
               await this.fsRepository.save(fsEntity);
             }
+
             resolve();
           });
         },
@@ -193,5 +211,48 @@ export class FsService {
 
   makeFileInvisible(path: string) {
     spawn('attrib', ['+h', path]);
+  }
+
+  async deleteFile(path: string) {
+    await unlink(path).catch((err) => {
+      throw err;
+    });
+  }
+
+  async moveFile(oldPath: string, newPath: string) {
+    await rename(oldPath, newPath).catch((err) => {
+      throw err;
+    });
+  }
+
+  async mkDir(path: string) {
+    await mkdir(path).catch((err) => {
+      throw err;
+    });
+  }
+
+  isParent(folderName: string, folderToCheck: string, path: string): boolean {
+    if (!path.includes(folderName) || !path.includes(folderToCheck))
+      return false;
+
+    const normalizedPath = normalize(path);
+
+    const pathEntries = normalizedPath.split('\\');
+    let [firstFolderProcessed, folderToCheckProcessed] = [false, false];
+
+    for (const entry of pathEntries) {
+      firstFolderProcessed = folderName === entry;
+      folderToCheckProcessed = folderToCheck === entry;
+
+      if (firstFolderProcessed && !folderToCheckProcessed) {
+        return true;
+      }
+
+      if (!firstFolderProcessed && folderToCheckProcessed) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

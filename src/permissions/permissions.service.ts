@@ -49,7 +49,6 @@ export class PermissionsService {
   async getPermissions(getPermsDto: GetPermsDto): Promise<string[] | null> {
     const permissionEntity = await this.permissionsRepository.findOne({
       where: {
-        driveId: getPermsDto.driveId,
         userUUID: getPermsDto.userUUID,
         name: getPermsDto.name,
       },

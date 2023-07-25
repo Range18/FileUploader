@@ -4,18 +4,21 @@ import {
   HttpStatus,
   Injectable,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { UserPayload } from '@/user/interfaces/userPayload';
+import { UserPayload } from '@/user/userPayload';
 import { ApiException } from '../Exceptions/ApiException';
 import { UserExceptions } from '../Exceptions/ExceptionTypes/UserExceptions';
+import { UserService } from '@/user/user.service';
+import { UserEntity } from '@/user/entities/user.entity';
 
 @Injectable()
 export class VerificationGuard implements CanActivate {
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
+  constructor(private readonly userService: UserService) {}
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const user: UserPayload = request['user'];
+    const userPayload: UserPayload = request['user'];
+    const user: UserEntity = await this.userService.findByUUID(
+      userPayload.UUID,
+    );
     if (!user.isVerified) {
       throw new ApiException(
         HttpStatus.FORBIDDEN,

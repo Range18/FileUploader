@@ -1,4 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
 
 @Entity('permissions')
 export class PermissionEntity {
@@ -11,7 +12,7 @@ export class PermissionEntity {
   @Column({ nullable: false })
   driveId: string;
 
-  @Column({ nullable: false, default: 'unnamed' })
+  @Column({ nullable: false, default: DEFAULT_FILE_NAME })
   name: string;
 
   @Column({ nullable: false })

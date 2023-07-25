@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UserPayload } from '@/user/interfaces/userPayload';
+import { UserPayload } from '@/user/userPayload';
 import { User } from '@/common/decorators/User.decorator';
 import { StorageService } from './storage.service';
 import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
@@ -20,6 +20,8 @@ import { Response } from 'express';
 import { MakeDirDto } from '@/storage/dto/makeDir.dto';
 import { SetDefaultStorageQueryInterceptor } from '@/common/interceptors/setDefaultStorageQuery.interceptor';
 import { PermissionsService } from '@/permissions/permissions.service';
+import { FileRdo } from '@/storage/rdo/file.rdo';
+import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
 
 @Controller('drive')
 export class StorageController {
@@ -30,9 +32,9 @@ export class StorageController {
 
   //Create Data
   @UseInterceptors(FileInterceptor('file', StorageService.multerOptions))
-  @RolesGuard('editor', 'owner')
   @UseInterceptors(SetDefaultStorageQueryInterceptor)
-  // @IsVerified()
+  @RolesGuard('editor', 'owner')
+  @IsVerified()
   @AuthGuard()
   @Post('upload')
   async uploadFile(
@@ -56,7 +58,7 @@ export class StorageController {
   }
 
   @RolesGuard('editor', 'owner')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Post('mkdir')
   async mkDir(@Body() makeDirDto: MakeDirDto, @User() user: UserPayload) {
@@ -69,7 +71,7 @@ export class StorageController {
 
   //Fetch Data
   @RolesGuard('reader', 'editor', 'owner')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Get('get')
   async getFile(
@@ -84,17 +86,17 @@ export class StorageController {
   }
 
   @RolesGuard('reader', 'editor', 'owner')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Get('get/info')
-  async getFileData(@Query('name') filename: string) {
+  async getFileData(@Query('name') filename: string): Promise<FileRdo> {
     return await this.storageService.getFileSystemEntity({
       where: { name: filename },
     });
   }
 
   @RolesGuard('editor', 'owner')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Delete('trash')
   async trashFile(@Query('name') filename: string) {
@@ -102,7 +104,7 @@ export class StorageController {
   }
 
   @RolesGuard('editor', 'owner')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Post('recover')
   async unTrashFile(@Query('name') filename: string) {
@@ -110,7 +112,7 @@ export class StorageController {
   }
 
   @RolesGuard('editor', 'owner')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Post('move')
   async moveFile(
@@ -122,18 +124,18 @@ export class StorageController {
 
   @RolesGuard('reader', 'editor', 'owner')
   @UseInterceptors(SetDefaultStorageQueryInterceptor)
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Get('get/dir')
   async getDirContent(
     @Query('storageId') storageId: string,
     @Query('path') path: string,
-  ) {
+  ): Promise<FileRdo[]> {
     return await this.storageService.getDirContent(`${storageId}/${path}`);
   }
 
   @RolesGuard('owner')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Delete('delete')
   async deleteFile(@Query('filename') filename: string) {
@@ -141,7 +143,7 @@ export class StorageController {
   }
 
   @Get('get/files&directories')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   async getObjUserAllowed(@User() user: UserPayload) {
     const permissionEntities =

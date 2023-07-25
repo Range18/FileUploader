@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
 
 @Entity('files&folders')
 export class FileSystemEntity {
@@ -12,9 +13,9 @@ export class FileSystemEntity {
   id: number;
 
   @Column({ nullable: false })
-  ownerUUID: string;
+  driveUUID: string;
 
-  @Column({ nullable: false, default: 'Unnamed' })
+  @Column({ nullable: false, default: DEFAULT_FILE_NAME })
   originalName: string;
 
   @Column({ nullable: false })

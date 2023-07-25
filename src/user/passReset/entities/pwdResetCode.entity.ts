@@ -1,8 +1,7 @@
 import { Column, Entity, Generated, PrimaryGeneratedColumn } from 'typeorm';
-import { PwdResetCode } from './pwdResetCode.domainModel';
 
 @Entity('PassResetCodes')
-export class PwdResetCodeEntity implements PwdResetCode {
+export class PwdResetCodeEntity {
   @PrimaryGeneratedColumn('increment')
   id: number;
 

@@ -8,7 +8,7 @@ import { Request } from 'express';
 import { ApiException } from '../Exceptions/ApiException';
 import { TokenService } from '@/token/token.service';
 import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
-import { UserPayload } from '@/user/interfaces/userPayload';
+import { UserPayload } from '@/user/userPayload';
 
 @Injectable()
 export class AuthGuardClass implements CanActivate {
@@ -20,7 +20,7 @@ export class AuthGuardClass implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request: Request = context.switchToHttp().getRequest();
+    const request: Request = context.switchToHttp().getRequest<Request>();
     const accessToken = this.extractAuthorizationToken(request);
     if (!accessToken) {
       throw new ApiException(
@@ -30,7 +30,7 @@ export class AuthGuardClass implements CanActivate {
       );
     }
 
-    const user: UserPayload = await this.tokenService
+    const userPayload: UserPayload = await this.tokenService
       .validateToken<UserPayload>(accessToken)
       .catch((err) => {
         if (err.message === 'jwt expired') {
@@ -46,14 +46,8 @@ export class AuthGuardClass implements CanActivate {
           TokenExceptions.InvalidAccessToken,
         );
       });
-    if (!user) {
-      throw new ApiException(
-        HttpStatus.UNAUTHORIZED,
-        'TokenExceptions',
-        TokenExceptions.InvalidAccessToken,
-      );
-    }
-    request['user'] = user;
+    request['user'] = { email: userPayload.email, UUID: userPayload.UUID };
+    request['session'] = userPayload.sessionUUID;
     return true;
   }
 }

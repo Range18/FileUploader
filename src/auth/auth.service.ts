@@ -1,21 +1,22 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CreateUserDto } from '@/user/dto/createUserDto';
+import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { UserService } from '@/user/user.service';
 import * as bcrypt from 'bcrypt';
-import { UserDto } from '@/user/dto/userDto';
+import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
 import { SessionService } from '@/session/session.service';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { apiServer, bcryptRounds } from '@/common/configs/config';
 import { VerificationService } from './verification/verification.service';
 import { MailService } from '@/mail/mail.service';
-import { UserWithoutSession } from '@/user/interfaces/userWithoutSession';
+
 import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
 import { AuthExceptions } from '@/common/Exceptions/ExceptionTypes/AuthExceptions';
 import { SessionExceptions } from '@/common/Exceptions/ExceptionTypes/SessionExceptions';
 import { StorageService } from '@/storage/storage.service';
 import { LoginDto } from './dto/login.dto';
 import { isEmail } from 'class-validator';
+import { CreateSession } from '@/common/types/createSession';
 
 @Injectable()
 export class AuthService {
@@ -29,7 +30,7 @@ export class AuthService {
 
   async registration(
     createUserDto: CreateUserDto,
-  ): Promise<{ userDto: UserDto; refreshToken: string }> {
+  ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const user =
       (await this.userService.findOneByEmail(createUserDto.email)) ??
       (await this.userService.findOneByUsername(createUserDto.username));
@@ -45,29 +46,29 @@ export class AuthService {
       createUserDto.password,
       bcryptRounds,
     );
-    const userRecord = await this.userService.saveUser(createUserDto);
-    const payload: UserWithoutSession = {
-      UUID: userRecord.UUID,
-      email: userRecord.email,
-      isVerified: userRecord.isVerified,
+    const userEntity = await this.userService.saveUser(createUserDto);
+    const payload: CreateSession = {
+      UUID: userEntity.UUID,
+      email: userEntity.email,
+      username: userEntity.username,
     };
 
     const link = `${apiServer.url}/auth/verify/${
-      (await this.verificationService.createCode(userRecord.UUID)).code
+      (await this.verificationService.createCode(userEntity.UUID)).code
     }`;
 
     this.mailService.sendVerifyEmail(createUserDto.email, link);
-    this.storageService.createDefaultStorage(payload);
+    this.storageService.createDefaultStorage(userEntity);
     const sessionData = await this.sessionService.saveSession(payload);
     return {
-      userDto: sessionData.userDto,
+      userRdo: sessionData.userRdo,
       refreshToken: sessionData.refreshToken,
     };
   }
 
   async login(
     userData: LoginDto,
-  ): Promise<{ userDto: UserDto; refreshToken: string }> {
+  ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const user = isEmail(userData.login)
       ? await this.userService.findOneByEmail(userData.login)
       : await this.userService.findOneByUsername(userData.login);
@@ -90,15 +91,15 @@ export class AuthService {
         AuthExceptions.WrongPassword,
       );
     }
-    const payload: UserWithoutSession = {
+    const payload: CreateSession = {
       UUID: user.UUID,
       email: user.email,
-      isVerified: user.isVerified,
+      username: user.username,
     };
     const sessionData = await this.sessionService.saveSession(payload);
 
     return {
-      userDto: sessionData.userDto,
+      userRdo: sessionData.userRdo,
       refreshToken: sessionData.refreshToken,
     };
   }
@@ -134,10 +135,10 @@ export class AuthService {
 
   async refresh(
     refreshToken: string,
-  ): Promise<{ userDto: UserDto; refreshToken: string } | null> {
+  ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const userData = await this.sessionService.getUserFromToken(refreshToken);
 
-    const session = await this.sessionService.findSessionByUUID(
+    const session = await this.sessionService.findOneByUUID(
       userData.sessionUUID,
     );
     if (!session) {
@@ -155,10 +156,10 @@ export class AuthService {
         UserExceptions.UserNotFound,
       );
     }
-    const userPayload: UserWithoutSession = {
+    const userPayload: CreateSession = {
       UUID: user.UUID,
       email: user.email,
-      isVerified: user.isVerified,
+      username: user.username,
     };
     const newSession = await this.sessionService.saveSession(userPayload);
     await this.sessionService.removeSession(session.sessionUUID);

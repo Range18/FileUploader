@@ -7,25 +7,24 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { FileSystemEntity } from './entities/fileSystemEntity';
 import { FindOneOptions, Like, Repository } from 'typeorm';
-import { UserPayload } from '@/user/interfaces/userPayload';
+import { UserPayload } from '@/user/userPayload';
 import { UserService } from '@/user/user.service';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { FileExceptions } from '@/common/Exceptions/ExceptionTypes/FileExceptions';
 import { createReadStream, existsSync } from 'fs';
-import { extname, join } from 'path';
-import { mkdir, readdir, rename, stat, unlink } from 'fs/promises';
+import { extname, join, normalize } from 'path';
+import { readdir, stat } from 'fs/promises';
 import { storageConfig } from '@/common/configs/storageConfig';
-import { UserWithoutSession } from '@/user/interfaces/userWithoutSession';
 import { diskStorage } from 'multer';
 import { Request } from 'express';
 import * as uuid4 from 'uuid4';
-import { FsEntryDto } from '@/storage/dto/file-directory.dto';
 import { UserEntity } from '@/user/entities/user.entity';
 import { FsService } from '@/storage/fs.service';
 import { TRASH_DIRECTORY_NAME } from '@/storage/storage.constants';
 import { PermissionEntity } from '@/permissions/entities/permissions.entity';
 import { PermissionsService } from '@/permissions/permissions.service';
+import { FileRdo } from '@/storage/rdo/file.rdo';
 
 @Injectable()
 export class StorageService {
@@ -126,13 +125,11 @@ export class StorageService {
       return;
     }
     await this.filesRepository.save({
-      ownerUUID: user.UUID,
-      originalName: isFolder
-        ? file.originalname.split('.')[0]
-        : file.originalname,
-      name: isFolder ? file.filename.split('.')[0] : file.filename,
-      destination: destination,
-      type: isFolder ? 'folder' : file.mimetype,
+      driveUUID: user.UUID,
+      originalName: file.originalname,
+      name: file.filename,
+      destination: normalize(destination),
+      type: file.mimetype,
       size: file.size,
     });
   }
@@ -163,11 +160,9 @@ export class StorageService {
     return this.filesRepository.findOne(options);
   }
 
-  async createDefaultStorage(
-    user: UserPayload | UserWithoutSession | UserEntity,
-  ) {
-    await mkdir(`${storageConfig.storagePath}/${user.UUID}`);
-    await mkdir(
+  async createDefaultStorage(user: UserPayload | UserEntity) {
+    await this.fsService.mkDir(`${storageConfig.storagePath}/${user.UUID}`);
+    await this.fsService.mkDir(
       `${storageConfig.storagePath}/${user.UUID}/${TRASH_DIRECTORY_NAME}`,
     );
     this.fsService.makeFileInvisible(
@@ -201,7 +196,7 @@ export class StorageService {
     }
 
     const folderEntity = await this.filesRepository.save({
-      ownerUUID: driveId,
+      driveUUID: driveId,
       originalName: dirname,
       name: uuid4(),
       destination: `${driveId}/${path}/`,
@@ -209,7 +204,7 @@ export class StorageService {
       size: 0,
     });
 
-    await mkdir(
+    await this.fsService.mkDir(
       `${storageConfig.storagePath}/${driveId}/${path}/${folderEntity.name}`,
     );
   }
@@ -268,41 +263,47 @@ export class StorageService {
         }
 
         const oldDest = `${storageConfig.storagePath}/${fileEntity.destination}/${fileEntity.name}`;
-        const newDest = `${storageConfig.storagePath}/${fileEntity.ownerUUID}/${newPath}/${fileEntity.name}`;
+        const newDest = `${storageConfig.storagePath}/${fileEntity.driveUUID}/${newPath}/${fileEntity.name}`;
 
-        await rename(oldDest, newDest);
+        await this.fsService.moveFile(oldDest, newDest);
 
         if (fileEntity.type === 'folder') {
           const fileEntities: FileSystemEntity[] =
             await this.filesRepository.find({
               where: { destination: Like(`%${fileEntity.name}%`) },
             });
+
           fileEntities.forEach(
             (elem) =>
-              (elem.destination = `${fileEntity.ownerUUID}${newPath}/${
-                fileEntity.name
-              }${elem.destination.split('\\').slice(2).join('\\')}/`),
+              (elem.destination = normalize(
+                join(
+                  fileEntity.driveUUID,
+                  newPath,
+                  elem.destination.split('\\').slice(2).join('\\'),
+                ),
+              )),
           );
+
           await this.filesRepository.save(fileEntities);
         }
 
-        fileEntity.destination = `${fileEntity.ownerUUID}${newPath}/`;
+        fileEntity.destination = normalize(join(fileEntity.driveUUID, newPath));
         await this.filesRepository.save(fileEntity);
         break;
       }
 
       case 'trash': {
         const oldDest = `${storageConfig.storagePath}/${fileEntity.destination}/${fileEntity.name}`;
-        const newDest = `${storageConfig.storagePath}/${fileEntity.ownerUUID}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
+        const newDest = `${storageConfig.storagePath}/${fileEntity.driveUUID}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
 
-        await rename(oldDest, newDest);
+        await this.fsService.moveFile(oldDest, newDest);
         break;
       }
       case 'untrash': {
-        const oldDest = `${storageConfig.storagePath}/${fileEntity.ownerUUID}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
+        const oldDest = `${storageConfig.storagePath}/${fileEntity.driveUUID}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
         const newDest = `${storageConfig.storagePath}/${fileEntity.destination}/${fileEntity.name}`;
 
-        await rename(oldDest, newDest);
+        await this.fsService.moveFile(oldDest, newDest);
         break;
       }
     }
@@ -393,14 +394,14 @@ export class StorageService {
     await this.filesRepository.save(fileEntity);
   }
   async deleteFile(filenameOrEntity: string | FileSystemEntity) {
-    const fileEntity =
+    const fileSystemEntity =
       typeof filenameOrEntity == 'string'
         ? await this.getFileSystemEntity({
             where: { name: filenameOrEntity },
           })
         : filenameOrEntity;
 
-    if (!fileEntity) {
+    if (!fileSystemEntity) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
         'FileExceptions',
@@ -408,21 +409,29 @@ export class StorageService {
       );
     }
 
-    if (fileEntity.isTrashed) {
-      await unlink(
-        `${storageConfig.storagePath}/${fileEntity.ownerUUID}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`,
-      );
-    } else {
-      await unlink(
-        `${storageConfig.storagePath}/${fileEntity.destination}${fileEntity.name}`,
+    try {
+      if (fileSystemEntity.isTrashed) {
+        await this.fsService.deleteFile(
+          `${storageConfig.storagePath}/${fileSystemEntity.driveUUID}/${TRASH_DIRECTORY_NAME}/${fileSystemEntity.name}`,
+        );
+      } else {
+        await this.fsService.deleteFile(
+          `${storageConfig.storagePath}/${fileSystemEntity.destination}${fileSystemEntity.name}`,
+        );
+      }
+    } catch (err) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'FileExceptions',
+        FileExceptions.FileNotFound,
       );
     }
 
-    await this.filesRepository.remove(fileEntity);
-    return fileEntity;
+    await this.filesRepository.remove(fileSystemEntity);
+    return fileSystemEntity;
   }
 
-  async getDirContent(path: string) {
+  async getDirContent(path: string): Promise<FileRdo[]> {
     if (
       !(await this.fsService.checkPathExists(
         `${storageConfig.storagePath}/${path}`,
@@ -436,49 +445,32 @@ export class StorageService {
     }
 
     const dirContent = await readdir(`${storageConfig.storagePath}/${path}`);
-    const driveUUID = path.split('/')[0];
     const indexOfTrash = dirContent.indexOf(TRASH_DIRECTORY_NAME);
 
     if (indexOfTrash > -1) {
       dirContent.splice(indexOfTrash, 1);
     }
 
-    const dirContentDto: FsEntryDto[] = [];
+    const dirContentDto: FileRdo[] = [];
 
     for (let i = 0; i < dirContent.length; i++) {
-      const objInfo = await stat(
-        `${storageConfig.storagePath}/${path}/${dirContent[i]}`,
-      );
+      const fileSystemEntity = await this.filesRepository.findOne({
+        where: { name: dirContent[i] },
+      });
 
-      if (objInfo.isFile()) {
-        const file = await this.filesRepository.findOne({
-          where: { name: dirContent[i] },
-        });
-
-        dirContentDto.push({
-          driveUUID: driveUUID,
-          type: 'file',
-          name: dirContent[i],
-          originalName: file.originalName,
-          extname: extname(dirContent[i]),
-          path: file.destination,
-          role: 'owner',
-          size: file.size,
-          updatedAt: file.updatedAt,
-          createdAt: file.createdAt,
-        });
-      } else {
-        dirContentDto.push({
-          driveUUID: driveUUID,
-          type: 'folder',
-          originalName: dirContent[i],
-          path: `${path}${dirContent[i]}`,
-          role: 'owner',
-          size: objInfo.size,
-          updatedAt: objInfo.mtime,
-          createdAt: objInfo.birthtime,
-        });
-      }
+      dirContentDto.push({
+        driveUUID: fileSystemEntity.driveUUID,
+        type: fileSystemEntity.type,
+        name: dirContent[i],
+        originalName: fileSystemEntity.originalName,
+        extname: extname(dirContent[i]),
+        destination: fileSystemEntity.destination,
+        role: 'owner',
+        isTrashed: fileSystemEntity.isTrashed,
+        size: fileSystemEntity.size,
+        updatedAt: fileSystemEntity.updatedAt,
+        createdAt: fileSystemEntity.createdAt,
+      });
     }
 
     return dirContentDto;

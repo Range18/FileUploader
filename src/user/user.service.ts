@@ -2,7 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entities/user.entity';
 import { FindOptionsWhere, Repository } from 'typeorm';
-import { CreateUserDto } from './dto/createUserDto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
@@ -10,7 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { bcryptRounds } from '@/common/configs/config';
 import { PassResetService } from './passReset/passReset.service';
 import { AuthExceptions } from '@/common/Exceptions/ExceptionTypes/AuthExceptions';
-import { ChangeEmailDto } from '@/user/dto/change-email.dto';
+import { updateUserDto } from '@/user/dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -123,9 +123,9 @@ export class UserService {
     await this.saveUser(user);
   }
 
-  async changeEmail(changeEmailDto: ChangeEmailDto) {
+  async changeEmail(changeEmailDto: updateUserDto) {
     const user = await this.userRepository.findOne({
-      where: { email: changeEmailDto.email },
+      where: { email: changeEmailDto.property },
     });
     if (!user) {
       throw new ApiException(
@@ -135,7 +135,7 @@ export class UserService {
       );
     }
     const userWithSameEmail = await this.userRepository.findOne({
-      where: { email: changeEmailDto.newEmail },
+      where: { email: changeEmailDto.newProperty },
     });
     if (userWithSameEmail) {
       throw new ApiException(
@@ -144,7 +144,7 @@ export class UserService {
         UserExceptions.UserAlreadyExists,
       );
     }
-    user.email = changeEmailDto.newEmail;
+    user.email = changeEmailDto.newProperty;
     await this.saveUser(user);
     //TODO send verifyEmail
   }

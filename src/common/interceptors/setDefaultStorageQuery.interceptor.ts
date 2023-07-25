@@ -1,6 +1,6 @@
 import { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { UserPayload } from '@/user/interfaces/userPayload';
+import { UserPayload } from '@/user/userPayload';
 
 export class SetDefaultStorageQueryInterceptor implements NestInterceptor {
   intercept(

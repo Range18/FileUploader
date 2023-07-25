@@ -2,17 +2,18 @@ import { Body, Controller, Param, Post } from '@nestjs/common';
 import { LinksService } from './links.service';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { User } from '@/common/decorators/User.decorator';
-import { UserPayload } from '@/user/interfaces/userPayload';
+import { UserPayload } from '@/user/userPayload';
 import { frontendServer } from '@/common/configs/config';
 import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
 import { CreateLinkDto } from './dto/create-link.dto';
+import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
 
 @Controller('drive')
 export class LinksController {
   constructor(private readonly linksService: LinksService) {}
 
   @RolesGuard('owner')
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Post('share/space')
   async createLink(
@@ -24,7 +25,7 @@ export class LinksController {
     return `${frontendServer.url}/drive/set/permissions/${link}`;
   }
 
-  // @IsVerified()
+  @IsVerified()
   @AuthGuard()
   @Post('set/permissions/:code')
   async getFile(@Param('code') code: string, @User() user: UserPayload) {

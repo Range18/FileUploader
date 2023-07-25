@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
 
 @Entity()
 export class LinkEntity {
@@ -18,7 +19,7 @@ export class LinkEntity {
   @Column({ nullable: false })
   destination: string;
 
-  @Column({ nullable: false, default: 'unnamed' })
+  @Column({ nullable: false, default: DEFAULT_FILE_NAME })
   name: string;
 
   @Column({ nullable: false })

@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { SessionEntity } from './entities/sessions.entity';
-import { UserPayload } from '@/user/interfaces/userPayload';
-import { UserDto } from '@/user/dto/userDto';
+import { UserPayload } from '@/user/userPayload';
+import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserWithoutSession } from '@/user/interfaces/userWithoutSession';
 import { jwtSettings } from '@/common/configs/config';
 import { TokenService } from '@/token/token.service';
+import { CreateSession } from '@/common/types/createSession';
 
 @Injectable()
 export class SessionService {
@@ -17,8 +17,8 @@ export class SessionService {
   ) {}
 
   async saveSession(
-    userData: UserWithoutSession,
-  ): Promise<{ userDto: UserDto; refreshToken: string } | null> {
+    userData: CreateSession,
+  ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string } | null> {
     const session = await this.sessionRepository.save({
       userUUID: userData.UUID,
       expireIn: new Date(
@@ -30,20 +30,22 @@ export class SessionService {
       ...userData,
       sessionUUID: session.sessionUUID,
     };
+    const accessToken = await this.tokenService.createToken(payload, {
+      expiresIn: jwtSettings.accessExpire,
+    });
     return {
-      userDto: new UserDto(
-        await this.tokenService.createToken(payload, {
-          expiresIn: jwtSettings.accessExpire,
-        }),
-        payload,
-      ),
+      userRdo: {
+        accessToken: accessToken,
+        email: userData.email,
+        username: userData.username,
+      },
       refreshToken: await this.tokenService.createToken(payload, {
         expiresIn: jwtSettings.refreshExpire,
       }),
     };
   }
 
-  async findSessionByUUID(sessionUUID: string): Promise<SessionEntity> {
+  async findOneByUUID(sessionUUID: string): Promise<SessionEntity> {
     return await this.sessionRepository.findOne({ where: { sessionUUID } });
   }
 

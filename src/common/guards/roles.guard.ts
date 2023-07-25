@@ -29,11 +29,14 @@ export class RolesGuardClass implements CanActivate {
 
     //Guard behavior if request is bounded with storage managing
     const controller = context.getClass().name;
+
     if (controller == 'StorageController') {
-      const driveId: string = request.query['storageId'];
       const name: string = request.query['name'] as string;
+      if (!name) {
+        return true;
+      }
+
       user.roles = await this.permissionService.getPermissions({
-        driveId: driveId,
         userUUID: user.UUID,
         name: name,
       });
@@ -49,6 +52,7 @@ export class RolesGuardClass implements CanActivate {
           FileExceptions.ObjectAccessFail,
         );
       }
+
       return isAvailable;
     }
     //Behavior to other requests

@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
 import { PermissionsService } from '@/permissions/permissions.service';
-import { UserPayload } from '@/user/interfaces/userPayload';
+import { UserPayload } from '@/user/userPayload';
 import { FileExceptions } from '@/common/Exceptions/ExceptionTypes/FileExceptions';
 import { StorageService } from '@/storage/storage.service';
 import { CreateLinkDto } from './dto/create-link.dto';
@@ -130,7 +130,7 @@ export class LinksService {
     await this.linkRepository.save(linkEntity);
     await this.permissionsService.setPermission({
       userUUID: user.UUID,
-      driveUUID: fsEntity.ownerUUID,
+      driveUUID: fsEntity.driveUUID,
       name: linkEntity.name,
       role: linkEntity.setRoles,
       permsExpireAt: linkEntity.permsExpireAt,

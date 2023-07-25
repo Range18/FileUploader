@@ -13,10 +13,10 @@ import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { ValidateQueryPipe } from '@/common/pipes/validateQuery.pipe';
 import { User } from '@/common/decorators/User.decorator';
-import { UserPayload } from './interfaces/userPayload';
+import { UserPayload } from './userPayload';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
-import { GetUserDto } from './dto/get-user.dto';
+import { GetUserRdo } from './rdo/get-user.rdo';
 
 @Controller('user')
 export class UserController {
@@ -61,8 +61,8 @@ export class UserController {
     @User() user: UserPayload,
   ) {
     await this.userService.changeEmail({
-      email: user.email,
-      newEmail: newEmail,
+      property: user.email,
+      newProperty: newEmail,
     });
   }
 
@@ -82,9 +82,9 @@ export class UserController {
   @Get()
   async getUserInfo(
     @Query('by', new ValidateQueryPipe(['email', 'username', 'uuid']))
-    userProperty: keyof GetUserDto,
+    userProperty: keyof GetUserRdo,
     @Query('value') propertyValue: string,
-  ): Promise<GetUserDto> {
+  ): Promise<GetUserRdo> {
     const user = await this.userService.findOne(userProperty, propertyValue);
     if (!user) {
       throw new ApiException(
