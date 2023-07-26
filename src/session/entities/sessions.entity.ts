@@ -19,7 +19,7 @@ export class SessionEntity {
   sessionUUID: string;
 
   @Column({ nullable: false })
-  expireIn: Date;
+  expireAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

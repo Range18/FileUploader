@@ -6,6 +6,7 @@ import { LinkEntity } from './entities/link.entity';
 import { UserModule } from '@/user/user.module';
 import { StorageModule } from '@/storage/storage.module';
 import { PermissionsModule } from '@/permissions/permissions.module';
+import { SessionModule } from '@/session/session.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { PermissionsModule } from '@/permissions/permissions.module';
     UserModule,
     StorageModule,
     PermissionsModule,
+    SessionModule,
   ],
   controllers: [LinksController],
   providers: [LinksService],

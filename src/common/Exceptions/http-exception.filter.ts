@@ -16,7 +16,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const statusCode =
       exception instanceof ApiException
-        ? exception.status
+        ? exception.statusCode
         : exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;

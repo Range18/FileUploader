@@ -9,10 +9,16 @@ import { ApiException } from '../Exceptions/ApiException';
 import { TokenService } from '@/token/token.service';
 import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
 import { UserPayload } from '@/user/userPayload';
+import { SessionService } from '@/session/session.service';
+import { SessionEntity } from '@/session/entities/sessions.entity';
+import { SessionExceptions } from '@/common/Exceptions/ExceptionTypes/SessionExceptions';
 
 @Injectable()
 export class AuthGuardClass implements CanActivate {
-  constructor(private readonly tokenService: TokenService) {}
+  constructor(
+    private readonly tokenService: TokenService,
+    private readonly sessionService: SessionService,
+  ) {}
 
   private extractAuthorizationToken(req: Request) {
     const [type, token] = req.headers.authorization?.split(' ') ?? [];
@@ -46,8 +52,20 @@ export class AuthGuardClass implements CanActivate {
           TokenExceptions.InvalidAccessToken,
         );
       });
+    const sessionEntity: SessionEntity =
+      await this.sessionService.findOneByUUID(userPayload.sessionUUID);
+    if (!sessionEntity) {
+      throw new ApiException(
+        HttpStatus.UNAUTHORIZED,
+        'SessionExceptions',
+        SessionExceptions.SessionNotFound,
+      );
+    }
     request['user'] = { email: userPayload.email, UUID: userPayload.UUID };
-    request['session'] = userPayload.sessionUUID;
+    request['session'] = {
+      UUID: sessionEntity.sessionUUID,
+      expireAt: sessionEntity.expireAt,
+    };
     return true;
   }
 }

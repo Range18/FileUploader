@@ -6,12 +6,14 @@ import { StorageService } from './storage.service';
 import { UserModule } from '@/user/user.module';
 import { FsService } from '@/storage/fs.service';
 import { PermissionsModule } from '@/permissions/permissions.module';
+import { SessionModule } from '@/session/session.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([FileSystemEntity]),
     UserModule,
     PermissionsModule,
+    SessionModule,
   ],
   controllers: [StorageController],
   providers: [StorageService, FsService],

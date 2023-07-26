@@ -15,28 +15,51 @@ const customExceptions = {
   FileExceptions,
   HttpExceptions: HttpException,
 };
-type CustomExceptions = typeof customExceptions;
 
-type ExceptionType<T extends keyof CustomExceptions> = CustomExceptions[T];
-export type ExceptionMessage<T extends keyof CustomExceptions> =
-  ExceptionType<T>[keyof ExceptionType<T>];
+export type CustomException = typeof customExceptions;
 
-export class ApiException<T extends keyof CustomExceptions> {
-  public readonly status: HttpStatus;
-  public readonly error: { type: T; message: ExceptionMessage<T> };
-  public readonly validationErrors?: string[];
+export type ExceptionType<T extends keyof CustomException> =
+  keyof CustomException[T];
+
+export type ExceptionMessage<T extends keyof CustomException> =
+  CustomException[T][ExceptionType<T>];
+export class ApiException<T extends keyof CustomException> {
+  public readonly statusCode: HttpStatus;
+  public readonly error: {
+    type: string;
+    message: ExceptionMessage<T> | string[];
+  };
+
   constructor(
-    status: HttpStatus,
-    type: T,
-    message: ExceptionMessage<T>,
-    validationErrors?: string[],
+    statusCode: HttpStatus,
+    exceptionType: T | OtherExceptions.ValidationException,
+    message: ExceptionMessage<T> | string[],
   ) {
-    this.status = status;
-    this.error = {
-      type,
-      message,
-    };
+    let type: string;
+    if (exceptionType !== OtherExceptions.ValidationException)
+      type = this.getKeyByValue(
+        customExceptions[exceptionType],
+        <string>message,
+      );
+    else type = exceptionType;
 
-    if (validationErrors) this.validationErrors = validationErrors;
+    this.statusCode = statusCode;
+    this.error = {
+      type: type,
+      message: message,
+    };
+  }
+
+  private getKeyByValue<T extends object>(
+    enumObj: T,
+    enumValue: string,
+  ): string {
+    const keys = Object.keys(enumObj) as (keyof T)[];
+
+    for (const key of keys) {
+      if (enumObj[key] === enumValue) {
+        return <string>key;
+      }
+    }
   }
 }

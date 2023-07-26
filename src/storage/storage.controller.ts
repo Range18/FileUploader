@@ -142,7 +142,7 @@ export class StorageController {
     await this.storageService.deleteFile(filename);
   }
 
-  @Get('get/files&directories')
+  @Get('get/shared/')
   @IsVerified()
   @AuthGuard()
   async getObjUserAllowed(@User() user: UserPayload) {

@@ -21,7 +21,7 @@ export class SessionService {
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string } | null> {
     const session = await this.sessionRepository.save({
       userUUID: userData.UUID,
-      expireIn: new Date(
+      expireAt: new Date(
         Date.now() +
           Number(jwtSettings.refreshExpire.slice(0, -1)) * 24 * 60 * 60 * 1000,
       ),

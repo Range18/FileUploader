@@ -5,7 +5,7 @@ import {
   PipeTransform,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { validate, ValidationError } from 'class-validator';
+import { validate } from 'class-validator';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
 
@@ -16,13 +16,14 @@ export class ValidationPipe implements PipeTransform<any> {
       return value;
     }
     const object = plainToInstance(metatype, value);
-    const errors: ValidationError[] = await validate(object);
+    const errors: string[] = (await validate(object)).map((value) => {
+      return `${value.property}: ${Object.values(value.constraints)}`;
+    });
     if (errors.length > 0) {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
-        'OtherExceptions',
         OtherExceptions.ValidationException,
-        errors.join('/').split('/'),
+        errors,
       );
     }
     return value;
