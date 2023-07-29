@@ -5,11 +5,11 @@ import { mkdir, rename, stat, unlink } from 'fs/promises';
 import { extname, join, normalize } from 'path';
 import * as mime from 'mime';
 import { createWriteStream } from 'fs';
-import * as uuid4 from 'uuid4';
 import { Repository } from 'typeorm';
 import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { spawn } from 'child_process';
+import { uid } from 'uid';
 
 @Injectable()
 export class FsService {
@@ -64,7 +64,7 @@ export class FsService {
                     processedFolders.get(pathToReplace).path,
                   )
                 : originalPath;
-              const genDirname = uuid4();
+              const genDirname = uid();
               const replacedPathArr = replacedPath.split('/');
 
               replacedPathArr.pop();
@@ -124,7 +124,7 @@ export class FsService {
 
                 replacedPathArr.pop();
 
-                const generatedName = uuid4();
+                const generatedName = uid();
                 const dest = replacedPathArr.join('/') + '/';
                 const filename = `${generatedName}${extname(entry.fileName)}`;
                 const filepath = `${dest}${filename}`;

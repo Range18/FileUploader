@@ -99,8 +99,9 @@ export class PermissionsService {
     await this.permissionsRepository.remove(permissionEntity);
   }
 
-  async getObjectsAvailable(userUUID: string) {
+  async getAvailable(userUUID: string) {
     const user = await this.userService.findOne('UUID', userUUID);
+
     if (!user) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
@@ -108,19 +109,26 @@ export class PermissionsService {
         UserExceptions.UserNotFound,
       );
     }
+
     const objectsAvailable = await this.permissionsRepository.find({
       where: { userUUID: userUUID },
     });
-    for (const object of objectsAvailable) {
+
+    for (const permissionEntity of objectsAvailable) {
       if (
-        object.isTrashed ||
-        (object.expireAt && object.expireAt < new Date(Date.now()))
+        permissionEntity.isTrashed ||
+        (permissionEntity.expireAt &&
+          permissionEntity.expireAt < new Date(Date.now()))
       ) {
-        const index = objectsAvailable.indexOf(object);
+        const index = objectsAvailable.indexOf(permissionEntity);
         objectsAvailable.splice(index, 1);
       }
-      if (object.expireAt && object.expireAt < new Date(Date.now())) {
-        await this.remove(object);
+
+      if (
+        permissionEntity.expireAt &&
+        permissionEntity.expireAt < new Date(Date.now())
+      ) {
+        await this.remove(permissionEntity);
       }
     }
 

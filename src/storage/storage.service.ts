@@ -18,13 +18,14 @@ import { readdir, stat } from 'fs/promises';
 import { storageConfig } from '@/common/configs/storageConfig';
 import { diskStorage } from 'multer';
 import { Request } from 'express';
-import * as uuid4 from 'uuid4';
 import { UserEntity } from '@/user/entities/user.entity';
 import { FsService } from '@/storage/fs.service';
 import { TRASH_DIRECTORY_NAME } from '@/storage/storage.constants';
 import { PermissionEntity } from '@/permissions/entities/permissions.entity';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
+import { uid } from 'uid';
+import { Roles } from '@/permissions/roles.constant';
 
 @Injectable()
 export class StorageService {
@@ -84,7 +85,7 @@ export class StorageService {
       },
 
       filename: (req, file, callback) => {
-        callback(null, `${uuid4()}${extname(file.originalname)}`);
+        callback(null, `${uid()}${extname(file.originalname)}`);
       },
     }),
   };
@@ -198,7 +199,7 @@ export class StorageService {
     const folderEntity = await this.filesRepository.save({
       driveUUID: driveId,
       originalName: dirname,
-      name: uuid4(),
+      name: uid(),
       destination: `${driveId}/${path}/`,
       type: 'folder',
       size: 0,
@@ -431,7 +432,7 @@ export class StorageService {
     return fileSystemEntity;
   }
 
-  async getDirContent(path: string): Promise<FileRdo[]> {
+  async getDirectoryContent(path: string): Promise<FileRdo[]> {
     if (
       !(await this.fsService.checkPathExists(
         `${storageConfig.storagePath}/${path}`,
@@ -458,6 +459,10 @@ export class StorageService {
         where: { name: dirContent[i] },
       });
 
+      const permsEntity = await this.permissionsService.findOne({
+        where: { name: fileSystemEntity.name },
+      });
+
       dirContentDto.push({
         driveUUID: fileSystemEntity.driveUUID,
         type: fileSystemEntity.type,
@@ -465,7 +470,7 @@ export class StorageService {
         originalName: fileSystemEntity.originalName,
         extname: extname(dirContent[i]),
         destination: fileSystemEntity.destination,
-        role: 'owner',
+        role: permsEntity ? <Roles>permsEntity.role : 'owner',
         isTrashed: fileSystemEntity.isTrashed,
         size: fileSystemEntity.size,
         updatedAt: fileSystemEntity.updatedAt,
@@ -475,21 +480,34 @@ export class StorageService {
 
     return dirContentDto;
   }
-  async setOriginalNames(permissionEntities: PermissionEntity[]) {
-    for (const permissionEntity of permissionEntities) {
-      const fileEntity = await this.filesRepository.findOne({
-        where: { name: permissionEntity.name },
-      });
-      const index = permissionEntities.indexOf(permissionEntity);
+  async formatPermEntities(
+    permissionEntities: PermissionEntity[],
+  ): Promise<Promise<FileRdo>[]> {
+    return permissionEntities.map(
+      async (permissionEntity): Promise<FileRdo> => {
+        const fileEntity = await this.filesRepository.findOne({
+          where: { name: permissionEntity.name },
+        });
 
-      if (!fileEntity) {
-        permissionEntities.splice(index, 1);
-        await this.permissionsService.remove(permissionEntity);
-      }
-
-      permissionEntities[index].name = fileEntity.originalName;
-    }
-
-    return permissionEntities;
+        if (!fileEntity) {
+          const index = permissionEntities.indexOf(permissionEntity);
+          permissionEntities.splice(index, 1);
+          await this.permissionsService.remove(permissionEntity);
+        }
+        return {
+          driveUUID: fileEntity.driveUUID,
+          originalName: fileEntity.originalName,
+          name: fileEntity.name,
+          destination: fileEntity.destination,
+          type: fileEntity.type,
+          size: fileEntity.size,
+          isTrashed: fileEntity.isTrashed,
+          extname: extname(fileEntity.originalName),
+          role: <Roles>permissionEntity.role,
+          updatedAt: fileEntity.updatedAt,
+          createdAt: fileEntity.createdAt,
+        };
+      },
+    );
   }
 }

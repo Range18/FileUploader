@@ -7,7 +7,6 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { ApiException } from '@/common/Exceptions/ApiException';
-import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
 
 @Injectable()
 export class ValidationPipe implements PipeTransform<any> {
@@ -22,7 +21,7 @@ export class ValidationPipe implements PipeTransform<any> {
     if (errors.length > 0) {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
-        OtherExceptions.ValidationException,
+        'ValidationExceptions',
         errors,
       );
     }

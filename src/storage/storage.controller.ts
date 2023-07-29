@@ -131,7 +131,9 @@ export class StorageController {
     @Query('storageId') storageId: string,
     @Query('path') path: string,
   ): Promise<FileRdo[]> {
-    return await this.storageService.getDirContent(`${storageId}/${path}`);
+    return await this.storageService.getDirectoryContent(
+      `${storageId}/${path}`,
+    );
   }
 
   @RolesGuard('owner')
@@ -146,8 +148,9 @@ export class StorageController {
   @IsVerified()
   @AuthGuard()
   async getObjUserAllowed(@User() user: UserPayload) {
-    const permissionEntities =
-      await this.permissionsService.getObjectsAvailable(user.UUID);
-    return await this.storageService.setOriginalNames(permissionEntities);
+    const permissionEntities = await this.permissionsService.getAvailable(
+      user.UUID,
+    );
+    return await this.storageService.formatPermEntities(permissionEntities);
   }
 }

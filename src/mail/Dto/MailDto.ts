@@ -1,4 +1,4 @@
-type MailType = 'verify' | 'PWDReset';
+type MailType = 'verify' | 'PWDReset' | 'PasswordResetSuccess';
 export class MailDto {
   mailType: MailType;
   recipient: string;
@@ -8,9 +8,9 @@ export class MailDto {
     this.mailType = mailType;
     this.recipient = recipient;
     this.subject =
-      mailType == 'verify' ? 'Verify your account' : 'Password reset email';
+      mailType === 'verify' ? 'Verify your account' : 'Password reset email';
     this.message =
-      mailType == 'verify'
+      mailType === 'verify'
         ? `
            <div>
               <h1>Follow this link to verify your account</h1>

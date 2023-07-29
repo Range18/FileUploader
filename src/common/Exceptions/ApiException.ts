@@ -2,7 +2,10 @@ import { UserExceptions } from './ExceptionTypes/UserExceptions';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { TokenExceptions } from './ExceptionTypes/TokenExceptions';
 import { AuthExceptions } from './ExceptionTypes/AuthExceptions';
-import { OtherExceptions } from './ExceptionTypes/OtherExceptions';
+import {
+  OtherExceptions,
+  ValidationExceptions,
+} from './ExceptionTypes/OtherExceptions';
 import { SessionExceptions } from './ExceptionTypes/SessionExceptions';
 import { FileExceptions } from './ExceptionTypes/FileExceptions';
 
@@ -14,6 +17,7 @@ const customExceptions = {
   SessionExceptions,
   FileExceptions,
   HttpExceptions: HttpException,
+  ValidationExceptions,
 };
 
 export type CustomException = typeof customExceptions;
@@ -32,16 +36,16 @@ export class ApiException<T extends keyof CustomException> {
 
   constructor(
     statusCode: HttpStatus,
-    exceptionType: T | OtherExceptions.ValidationException,
-    message: ExceptionMessage<T> | string[],
+    exceptionType: T,
+    message: T extends 'ValidationExceptions' ? string[] : ExceptionMessage<T>,
   ) {
     let type: string;
-    if (exceptionType !== OtherExceptions.ValidationException)
+    if (exceptionType !== 'ValidationExceptions')
       type = this.getKeyByValue(
         customExceptions[exceptionType],
         <string>message,
       );
-    else type = exceptionType;
+    else type = 'ValidationException';
 
     this.statusCode = statusCode;
     this.error = {
