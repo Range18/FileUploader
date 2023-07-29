@@ -20,7 +20,10 @@ import { diskStorage } from 'multer';
 import { Request } from 'express';
 import { UserEntity } from '@/user/entities/user.entity';
 import { FsService } from '@/storage/fs.service';
-import { TRASH_DIRECTORY_NAME } from '@/storage/storage.constants';
+import {
+  FILE_NAMES_SIZE,
+  TRASH_DIRECTORY_NAME,
+} from '@/storage/storage.constants';
 import { PermissionEntity } from '@/permissions/entities/permissions.entity';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
@@ -75,7 +78,7 @@ export class StorageService {
           if (!existsSync(checkingPath)) {
             callback(
               new NotFoundException('FileException', {
-                cause: FileExceptions.DirNotFound,
+                cause: FileExceptions.FileNotFound,
               }),
               '',
             );
@@ -85,7 +88,7 @@ export class StorageService {
       },
 
       filename: (req, file, callback) => {
-        callback(null, `${uid()}${extname(file.originalname)}`);
+        callback(null, `${uid(FILE_NAMES_SIZE)}${extname(file.originalname)}`);
       },
     }),
   };
@@ -157,7 +160,7 @@ export class StorageService {
     return { buffer: new StreamableFile(file), mimetype: fileEntity.type };
   }
 
-  async getFileSystemEntity(options: FindOneOptions) {
+  async getFileSystemEntity(options: FindOneOptions<FileSystemEntity>) {
     return this.filesRepository.findOne(options);
   }
 
@@ -180,7 +183,7 @@ export class StorageService {
       throw new ApiException(
         HttpStatus.BAD_REQUEST,
         'FileExceptions',
-        FileExceptions.DirAlreadyExists,
+        FileExceptions.FileAlreadyExists,
       );
     }
 
@@ -192,14 +195,14 @@ export class StorageService {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
         'FileExceptions',
-        FileExceptions.DirNotFound,
+        FileExceptions.FileNotFound,
       );
     }
 
     const folderEntity = await this.filesRepository.save({
       driveUUID: driveId,
       originalName: dirname,
-      name: uid(),
+      name: uid(FILE_NAMES_SIZE),
       destination: `${driveId}/${path}/`,
       type: 'folder',
       size: 0,
@@ -259,7 +262,7 @@ export class StorageService {
           throw new ApiException(
             HttpStatus.FORBIDDEN,
             'FileExceptions',
-            FileExceptions.ObjectAccessFail,
+            FileExceptions.AccessFail,
           );
         }
 
@@ -441,7 +444,7 @@ export class StorageService {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
         'FileExceptions',
-        FileExceptions.DirNotFound,
+        FileExceptions.FileNotFound,
       );
     }
 

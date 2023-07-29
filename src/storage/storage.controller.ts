@@ -70,9 +70,9 @@ export class StorageController {
   }
 
   //Fetch Data
-  @RolesGuard('reader', 'editor', 'owner')
-  @IsVerified()
-  @AuthGuard()
+  // @RolesGuard('reader', 'editor', 'owner')
+  // @IsVerified()
+  // @AuthGuard()
   @Get('get')
   async getFile(
     @Query('name') filename: string,

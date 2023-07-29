@@ -38,7 +38,7 @@ export class LinksService {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
         'FileExceptions',
-        FileExceptions.DirNotFound,
+        FileExceptions.FileNotFound,
       );
     }
 
@@ -98,7 +98,7 @@ export class LinksService {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
         'FileExceptions',
-        FileExceptions.DirNotFound,
+        FileExceptions.FileNotFound,
       );
     }
 

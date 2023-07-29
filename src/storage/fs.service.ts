@@ -10,6 +10,7 @@ import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { spawn } from 'child_process';
 import { uid } from 'uid';
+import { FILE_NAMES_SIZE } from '@/storage/storage.constants';
 
 @Injectable()
 export class FsService {
@@ -64,7 +65,7 @@ export class FsService {
                     processedFolders.get(pathToReplace).path,
                   )
                 : originalPath;
-              const genDirname = uid();
+              const genDirname = uid(FILE_NAMES_SIZE);
               const replacedPathArr = replacedPath.split('/');
 
               replacedPathArr.pop();
@@ -88,7 +89,7 @@ export class FsService {
                   FolderDestination,
                   replacedPathArr.join('/') + '/',
                 ),
-                type: mime.getType(join(unzipToDir, folderPath)) ?? 'folder',
+                type: 'folder',
                 size: entry.compressedSize,
               });
 
@@ -124,7 +125,7 @@ export class FsService {
 
                 replacedPathArr.pop();
 
-                const generatedName = uid();
+                const generatedName = uid(FILE_NAMES_SIZE);
                 const dest = replacedPathArr.join('/') + '/';
                 const filename = `${generatedName}${extname(entry.fileName)}`;
                 const filepath = `${dest}${filename}`;
@@ -134,16 +135,20 @@ export class FsService {
                 readStream.pipe(file);
 
                 file.on('finish', async () => {
+                  console.log(entry);
+                  console.log(filepath);
+                  console.log(mime.getType(join(unzipToDir, filepath)));
                   await this.fsRepository.save({
                     driveUUID: userUUID,
                     originalName: entry.fileName.split('/').slice(-1).join(''),
                     name: filename,
                     destination: normalize(FolderDestination + dest),
-                    type: mime.getType(join(unzipToDir, filepath)),
+                    //TODO Why not default column value
+                    type: mime.getType(join(unzipToDir, filepath)) ?? 'untyped',
                     size: entry.uncompressedSize,
                   });
-
                   const folder = processedFolders.get(pathToReplace);
+
                   processedFolders.set(pathToReplace, {
                     name: folder.name,
                     path: folder.path,
@@ -153,8 +158,9 @@ export class FsService {
                   zipfile.readEntry();
                 });
 
-                file.on('error', (err) => {
+                file.on('error', async (err) => {
                   zipfile.close();
+                  await this.deleteFile(`./${file.path}`);
                   reject(err);
                 });
               });

@@ -15,6 +15,7 @@ export class CreateLinkDto {
   @IsNumber()
   usesLimit?: number;
 
+  @IsString()
   permsExpireIn?: string;
 
   @IsNumber()

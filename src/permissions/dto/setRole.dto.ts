@@ -10,6 +10,7 @@ export class SetRoleDto {
   driveUUID: string;
 
   @IsString()
+  @IsNotEmpty()
   name: string;
 
   @IsString()

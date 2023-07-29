@@ -8,12 +8,14 @@ import { Reflector } from '@nestjs/core';
 import { ApiException } from '../Exceptions/ApiException';
 import { FileExceptions } from '../Exceptions/ExceptionTypes/FileExceptions';
 import { PermissionsService } from '@/permissions/permissions.service';
+import { StorageService } from '@/storage/storage.service';
 
 @Injectable()
 export class RolesGuardClass implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly permissionService: PermissionsService,
+    private readonly storageService: StorageService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -41,6 +43,14 @@ export class RolesGuardClass implements CanActivate {
         name: name,
       });
 
+      if (!user.roles) {
+        const fileSystemEntity = await this.storageService.getFileSystemEntity({
+          where: { name: name },
+        });
+
+        user.roles = fileSystemEntity.driveUUID === user.UUID ? 'owner' : [];
+      }
+
       const isAvailable = requiredRoles.some((role) =>
         user.roles?.includes(role),
       );
@@ -49,7 +59,7 @@ export class RolesGuardClass implements CanActivate {
         throw new ApiException(
           HttpStatus.FORBIDDEN,
           'FileExceptions',
-          FileExceptions.ObjectAccessFail,
+          FileExceptions.AccessFail,
         );
       }
 

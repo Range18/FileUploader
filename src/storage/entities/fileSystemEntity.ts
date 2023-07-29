@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
 
-@Entity('files&folders')
+@Entity('files')
 export class FileSystemEntity {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -24,7 +24,7 @@ export class FileSystemEntity {
   @Column({ nullable: false })
   destination: string;
 
-  @Column({ nullable: false })
+  @Column({ nullable: true, default: 'untyped' })
   type: string;
 
   @Column({ nullable: false })

@@ -1,27 +1,34 @@
-type MailType = 'verify' | 'PWDReset' | 'PasswordResetSuccess';
+import { mailMessages, mailSubjects } from '@/mail/mail.constants';
+
+export type MailType = 'verify' | 'passwordReset' | 'PasswordResetSuccess';
+
 export class MailDto {
   mailType: MailType;
   recipient: string;
   subject: string;
   message: string;
+  //TODO link null if PasswordResetSuccess mailType
   constructor(mailType: MailType, recipient: string, link: string) {
     this.mailType = mailType;
     this.recipient = recipient;
-    this.subject =
-      mailType === 'verify' ? 'Verify your account' : 'Password reset email';
-    this.message =
-      mailType === 'verify'
-        ? `
-           <div>
-              <h1>Follow this link to verify your account</h1>
-              <a href='${link}'>Activate your account</a>
-           </div>       
-            `
-        : `
-           <div>
-                <h1>Follow this link to reset your password</h1>
-                <a href='${link}'>Reset password</a>
-           </div>
-            `;
+
+    switch (this.mailType) {
+      case 'verify':
+        this.subject = mailSubjects.verify;
+        this.message = mailMessages.Createverify(link);
+        break;
+      case 'passwordReset':
+        this.subject = mailSubjects.passwordReset;
+        this.message = mailMessages.CreatepasswordReset(link);
+        break;
+      case 'PasswordResetSuccess':
+        this.subject = mailSubjects.PasswordResetSuccess;
+        this.message = mailMessages.CreatePasswordResetSuccess();
+        break;
+      default:
+        this.subject = 'TEST';
+        this.message = `<p>TEST</p>`;
+        break;
+    }
   }
 }

@@ -5,10 +5,9 @@ import {
   Generated,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { VerifyCode } from './verifyCode.domainModel';
 
 @Entity('verifyCodes')
-export class VerificationCodeEntity implements VerifyCode {
+export class VerificationCodeEntity {
   @PrimaryGeneratedColumn('increment')
   id: number;
 

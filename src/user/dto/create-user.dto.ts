@@ -24,6 +24,7 @@ export class CreateUserDto {
     minSymbols: PASSWORD.MIN_SYMBOLS,
     minUppercase: PASSWORD.MIN_UPPERCASE,
   })
+  @IsString()
   @IsNotEmpty()
   password: string;
 }

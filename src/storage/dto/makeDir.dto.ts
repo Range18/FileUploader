@@ -2,6 +2,7 @@ import { IsNotEmpty, IsString } from 'class-validator';
 
 export class MakeDirDto {
   @IsString()
+  @IsNotEmpty()
   storageId: string;
 
   @IsString()

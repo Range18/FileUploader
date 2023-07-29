@@ -28,8 +28,9 @@ export class MailService {
         text: '',
         html: mailDto.message,
       })
-      .catch((err) => {
-        this.userService.delete({ email: mailDto.recipient });
+      .catch(async (err) => {
+        console.log(err);
+        await this.userService.delete({ email: mailDto.recipient });
         throw new BadRequestException(err, { cause: err });
       });
   }
@@ -51,7 +52,7 @@ export class MailService {
       .code;
     await this.sendEMail(
       new MailDto(
-        'PWDReset',
+        'passwordReset',
         recipient,
         `${frontendServer.url}/user/change/password/${code}`,
       ),
