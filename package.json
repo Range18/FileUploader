@@ -1,6 +1,6 @@
 {
   "name": "file-uploader",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "author": "Range",
   "private": true,
@@ -35,6 +35,7 @@
     "env-var": "^7.3.1",
     "helmet": "^7.0.0",
     "mime-type": "^4.0.0",
+    "ms": "3.0.0-canary.1",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.4.0",
     "nodemailer": "^6.9.3",

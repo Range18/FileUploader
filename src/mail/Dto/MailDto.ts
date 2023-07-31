@@ -1,6 +1,4 @@
-import { mailMessages, mailSubjects } from '@/mail/mail.constants';
-
-export type MailType = 'verify' | 'passwordReset' | 'PasswordResetSuccess';
+import { mailMessages, mailSubjects, MailType } from '@/mail/mail.constants';
 
 export class MailDto {
   mailType: MailType;
@@ -15,16 +13,24 @@ export class MailDto {
     switch (this.mailType) {
       case 'verify':
         this.subject = mailSubjects.verify;
-        this.message = mailMessages.Createverify(link);
+        this.message = mailMessages.verify.createMessage(link);
         break;
+
       case 'passwordReset':
         this.subject = mailSubjects.passwordReset;
-        this.message = mailMessages.CreatepasswordReset(link);
+        this.message = mailMessages.passwordReset.createMessage(link);
         break;
+
       case 'PasswordResetSuccess':
         this.subject = mailSubjects.PasswordResetSuccess;
-        this.message = mailMessages.CreatePasswordResetSuccess();
+        this.message = mailMessages.PasswordResetSuccess.createMessage();
         break;
+
+      case 'ShareFileAccess':
+        this.subject = mailSubjects.ShareFileAccess;
+        this.message = mailMessages.ShareFileAccess.createMessage(link);
+        break;
+
       default:
         this.subject = 'TEST';
         this.message = `<p>TEST</p>`;

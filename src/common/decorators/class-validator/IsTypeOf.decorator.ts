@@ -1,0 +1,77 @@
+import {
+  registerDecorator,
+  ValidationArguments,
+  ValidationOptions,
+} from 'class-validator';
+
+export function IsTypeOf(type: string, validationOptions?: ValidationOptions) {
+  return function (object: NonNullable<unknown>, propertyName: string) {
+    registerDecorator({
+      name: 'IsType',
+      target: object.constructor,
+      propertyName: propertyName,
+      constraints: [type],
+      options: validationOptions,
+      validator: {
+        validate(value: any) {
+          if (type === 'StringValue') {
+            const units: Readonly<string[]> = [
+              'years',
+              'year',
+              'yrs',
+              'yr',
+              'y',
+              'weeks',
+              'week',
+              'w',
+              'days',
+              'day',
+              'd',
+              'hours',
+              'hour',
+              'hrs',
+              'hr',
+              'h',
+              'minutes',
+              'minute',
+              'mins',
+              'min',
+              'm',
+              'second',
+              'secs',
+              'sec',
+              's',
+              'milliseconds',
+              'millisecond',
+              'msecs',
+              'msec',
+              'ms',
+            ];
+
+            if (typeof value === 'string') {
+              const parsedNumber = parseFloat(value);
+
+              if (!parsedNumber) {
+                return false;
+              }
+
+              const parsedUnit = value
+                .slice(parsedNumber.toString().length)
+                .toLowerCase();
+
+              if (units.includes(parsedUnit)) {
+                return true;
+              }
+            }
+          }
+
+          return typeof value === type;
+        },
+
+        defaultMessage(validationArguments?: ValidationArguments): string {
+          return `${propertyName} must be a ${type}`;
+        },
+      },
+    });
+  };
+}

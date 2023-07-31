@@ -28,10 +28,7 @@ export class AuthController {
     const { userRdo, refreshToken } = await this.authService.registration(user);
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      expires: new Date(
-        Date.now() +
-          Number(jwtSettings.refreshExpire.slice(0, -1)) * 24 * 60 * 60 * 1000,
-      ),
+      expires: new Date(Date.now() + jwtSettings.refreshExpire.ms()),
     });
     return userRdo;
   }
@@ -44,10 +41,7 @@ export class AuthController {
     const { userRdo, refreshToken } = await this.authService.login(user);
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      expires: new Date(
-        Date.now() +
-          Number(jwtSettings.refreshExpire.slice(0, -1)) * 24 * 60 * 60 * 1000,
-      ),
+      expires: new Date(Date.now() + jwtSettings.refreshExpire.ms()),
     });
     return userRdo;
   }
@@ -77,10 +71,7 @@ export class AuthController {
     );
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      expires: new Date(
-        Date.now() +
-          Number(jwtSettings.refreshExpire.slice(0, -1)) * 24 * 60 * 60 * 1000,
-      ),
+      expires: new Date(Date.now() + jwtSettings.refreshExpire.ms()),
     });
     return userRdo;
   }

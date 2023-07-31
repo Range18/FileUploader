@@ -1,5 +1,6 @@
 import * as env from 'env-var';
 import 'dotenv/config';
+import ms from 'ms';
 
 export const apiServer = {
   port: env.get('API_PORT').default(3000).asPortNumber(),
@@ -19,8 +20,23 @@ export const frontendServer = {
 };
 export const jwtSettings = {
   secret: env.get('SECRET').required().asString(),
-  refreshExpire: '30d',
-  accessExpire: '1h',
+  refreshExpire: {
+    ms() {
+      return ms(this.value);
+    },
+    value: env.get('REFRESH_EXPIRE').default('30d').asString(),
+  },
+  accessExpire: {
+    ms() {
+      return ms(this.value);
+    },
+    value: env.get('ACCESS_EXPIRE').default('15min').asString(),
+  },
 };
 export const bcryptRounds = 10;
-export const pwdResetExpire = '24h';
+export const pwdResetExpire = {
+  ms() {
+    return ms(this.value);
+  },
+  value: env.get('PWD_RESET_CODE_EXPIRE').default('24h').asString(),
+};

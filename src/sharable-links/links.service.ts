@@ -9,8 +9,9 @@ import { UserPayload } from '@/user/userPayload';
 import { FileExceptions } from '@/common/Exceptions/ExceptionTypes/FileExceptions';
 import { StorageService } from '@/storage/storage.service';
 import { CreateLinkDto } from './dto/create-link.dto';
-import { getTimeMultByChar } from '@/common/utils/getTimeMultByChar';
-import { extname } from 'path';
+import ms from 'ms';
+import { MailService } from '@/mail/mail.service';
+import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
 
 @Injectable()
 export class LinksService {
@@ -19,6 +20,7 @@ export class LinksService {
     private readonly linkRepository: Repository<LinkEntity>,
     private readonly storageService: StorageService,
     private readonly permissionsService: PermissionsService,
+    private readonly mailService: MailService,
   ) {}
 
   async createLink(userUUID: string, createLinkDto: CreateLinkDto) {
@@ -27,14 +29,6 @@ export class LinksService {
     });
 
     if (!fsEntity) {
-      if (extname(createLinkDto.name)) {
-        throw new ApiException(
-          HttpStatus.NOT_FOUND,
-          'FileExceptions',
-          FileExceptions.FileNotFound,
-        );
-      }
-
       throw new ApiException(
         HttpStatus.NOT_FOUND,
         'FileExceptions',
@@ -42,28 +36,28 @@ export class LinksService {
       );
     }
 
-    return await this.linkRepository.save({
+    const linkEntity = await this.linkRepository.save({
       userShared: userUUID,
-      destination: fsEntity.destination,
       name: fsEntity.name,
       setRoles: createLinkDto.roles,
       isPrivate: createLinkDto.isPrivate,
+      userToShare: createLinkDto.userToShare,
       usesLimit: createLinkDto.usesLimit,
       permsExpireAt: createLinkDto.permsExpireIn
-        ? new Date(
-            Date.now() +
-              Number(createLinkDto.permsExpireIn.slice(0, -1)) *
-                getTimeMultByChar(createLinkDto.permsExpireIn.slice(-1)),
-          )
+        ? new Date(Date.now() + ms(createLinkDto.permsExpireIn))
         : createLinkDto.permsExpireIn,
       expireAt: createLinkDto.expireIn
-        ? new Date(
-            Date.now() +
-              Number(createLinkDto.expireIn.slice(0, -1)) *
-                getTimeMultByChar(createLinkDto.expireIn.slice(-1)),
-          )
+        ? new Date(Date.now() + ms(createLinkDto.expireIn))
         : createLinkDto.expireIn,
     });
+
+    if (createLinkDto.userToShare) {
+      await this.mailService.sendSharingFileEmail(
+        createLinkDto.userToShare,
+        linkEntity.link,
+      );
+    }
+    return linkEntity;
   }
 
   async getLinkEntityByUUID(uuid: string): Promise<LinkEntity> {
@@ -74,6 +68,7 @@ export class LinksService {
     const linkEntity = await this.linkRepository.findOne({
       where: { link: uuid },
     });
+
     if (!linkEntity) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
@@ -81,20 +76,24 @@ export class LinksService {
         TokenExceptions.TokenNotFound,
       );
     }
+
     linkEntity.lastPass = new Date(Date.now());
+
+    if (linkEntity.userShared === user.UUID) {
+      throw new ApiException(
+        HttpStatus.CONFLICT,
+        'OtherExceptions',
+        OtherExceptions.PermissionOwnerAlready,
+      );
+    }
 
     const fsEntity = await this.storageService.getFileSystemEntity({
       where: { name: linkEntity.name },
     });
+
     if (!fsEntity || fsEntity.isTrashed) {
       await this.linkRepository.remove(linkEntity);
-      if (extname(fsEntity.name)) {
-        throw new ApiException(
-          HttpStatus.NOT_FOUND,
-          'FileExceptions',
-          FileExceptions.FileNotFound,
-        );
-      }
+
       throw new ApiException(
         HttpStatus.NOT_FOUND,
         'FileExceptions',
@@ -116,6 +115,7 @@ export class LinksService {
         linkEntity.usesLimit -= 1;
       } else {
         await this.removeLink(linkEntity);
+
         throw new ApiException(
           HttpStatus.FORBIDDEN,
           'TokenExceptions',
@@ -124,10 +124,36 @@ export class LinksService {
       }
     }
 
-    if (linkEntity.usesLimit == 0) {
+    if (linkEntity.usesLimit === 0) {
       await this.removeLink(linkEntity);
+    } else {
+      await this.linkRepository.save(linkEntity);
     }
-    await this.linkRepository.save(linkEntity);
+
+    if (linkEntity.isPrivate) {
+      const permissionOfUser = await this.permissionsService.findOne({
+        where: { userUUID: user.UUID },
+      });
+
+      if (!permissionOfUser) {
+        await this.linkRepository.save(linkEntity);
+
+        throw new ApiException(
+          HttpStatus.FORBIDDEN,
+          'FileExceptions',
+          FileExceptions.AccessFail,
+        );
+      }
+    }
+
+    if (linkEntity.userToShare && user.email !== linkEntity.userToShare) {
+      throw new ApiException(
+        HttpStatus.FORBIDDEN,
+        'FileExceptions',
+        FileExceptions.AccessFail,
+      );
+    }
+
     await this.permissionsService.setPermission({
       userUUID: user.UUID,
       driveUUID: fsEntity.driveUUID,

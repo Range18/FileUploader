@@ -21,17 +21,14 @@ export class SessionService {
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string } | null> {
     const session = await this.sessionRepository.save({
       userUUID: userData.UUID,
-      expireAt: new Date(
-        Date.now() +
-          Number(jwtSettings.refreshExpire.slice(0, -1)) * 24 * 60 * 60 * 1000,
-      ),
+      expireAt: new Date(Date.now() + jwtSettings.refreshExpire.ms()),
     });
     const payload: UserPayload = {
       ...userData,
       sessionUUID: session.sessionUUID,
     };
     const accessToken = await this.tokenService.createToken(payload, {
-      expiresIn: jwtSettings.accessExpire,
+      expiresIn: jwtSettings.accessExpire.value,
     });
     return {
       userRdo: {
@@ -40,7 +37,7 @@ export class SessionService {
         username: userData.username,
       },
       refreshToken: await this.tokenService.createToken(payload, {
-        expiresIn: jwtSettings.refreshExpire,
+        expiresIn: jwtSettings.refreshExpire.value,
       }),
     };
   }

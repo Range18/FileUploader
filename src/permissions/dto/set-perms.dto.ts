@@ -1,6 +1,6 @@
 import { IsDate, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
-export class SetRoleDto {
+export class SetPermsDto {
   @IsUUID()
   @IsNotEmpty()
   userUUID: string;

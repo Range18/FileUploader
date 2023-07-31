@@ -15,9 +15,7 @@ export class PassResetService {
   async createPassResetCode(userUUID: string): Promise<PwdResetCodeEntity> {
     return this.passResetCodeRep.save({
       userUUID: userUUID,
-      expireIn: new Date(
-        Date.now() + Number(pwdResetExpire.slice(0, -1)) * 60 * 60 * 1000,
-      ),
+      expireIn: new Date(Date.now() + pwdResetExpire.ms()),
     });
   }
 

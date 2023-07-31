@@ -7,6 +7,7 @@ import { UserModule } from '@/user/user.module';
 import { StorageModule } from '@/storage/storage.module';
 import { PermissionsModule } from '@/permissions/permissions.module';
 import { SessionModule } from '@/session/session.module';
+import { MailModule } from '@/mail/mail.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { SessionModule } from '@/session/session.module';
     StorageModule,
     PermissionsModule,
     SessionModule,
+    MailModule,
   ],
   controllers: [LinksController],
   providers: [LinksService],

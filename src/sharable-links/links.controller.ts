@@ -7,6 +7,7 @@ import { frontendServer } from '@/common/configs/config';
 import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
 import { CreateLinkDto } from './dto/create-link.dto';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
+import { CreateLinkRdo } from '@/sharable-links/dto/creat-link.rdo';
 
 @Controller('drive')
 export class LinksController {
@@ -20,9 +21,15 @@ export class LinksController {
     @Body()
     body: CreateLinkDto,
     @User() user: UserPayload,
-  ) {
-    const { link } = await this.linksService.createLink(user.UUID, body);
-    return `${frontendServer.url}/drive/set/permissions/${link}`;
+  ): Promise<CreateLinkRdo> {
+    const { userToShare, link } = await this.linksService.createLink(
+      user.UUID,
+      body,
+    );
+    return {
+      isMailed: !!userToShare,
+      link: `${frontendServer.url}/drive/set/permissions/${link}`,
+    };
   }
 
   @IsVerified()

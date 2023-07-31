@@ -6,7 +6,7 @@ import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { UserService } from '@/user/user.service';
 import { PassResetService } from '@/user/passReset/passReset.service';
-import { frontendServer } from '@/common/configs/config';
+import { apiServer, frontendServer } from '@/common/configs/config';
 
 @Injectable()
 export class MailService {
@@ -30,7 +30,6 @@ export class MailService {
       })
       .catch(async (err) => {
         console.log(err);
-        await this.userService.delete({ email: mailDto.recipient });
         throw new BadRequestException(err, { cause: err });
       });
   }
@@ -41,6 +40,7 @@ export class MailService {
 
   async sendPassResetEmail(recipient: string) {
     const user = await this.userService.findOneByEmail(recipient);
+
     if (!user) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
@@ -48,13 +48,25 @@ export class MailService {
         UserExceptions.UserNotFound,
       );
     }
+
     const code = (await this.passResetService.createPassResetCode(user.UUID))
       .code;
+
     await this.sendEMail(
       new MailDto(
         'passwordReset',
         recipient,
         `${frontendServer.url}/user/change/password/${code}`,
+      ),
+    );
+  }
+
+  async sendSharingFileEmail(recepient: string, link: string) {
+    await this.sendEMail(
+      new MailDto(
+        'ShareFileAccess',
+        recepient,
+        `${apiServer.url}/drive/set/permissions/${link}`,
       ),
     );
   }

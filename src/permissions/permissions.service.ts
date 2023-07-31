@@ -1,9 +1,9 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { SetRoleDto } from './dto/setRole.dto';
+import { SetPermsDto } from './dto/set-perms.dto';
 import { PermissionEntity } from './entities/permissions.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindManyOptions, FindOneOptions, Repository } from 'typeorm';
-import { GetPermsDto } from '@/permissions/dto/getPermsDto';
+import { GetPermsDto } from '@/permissions/dto/get-perms.dto';
 import { UserService } from '@/user/user.service';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
@@ -19,30 +19,33 @@ export class PermissionsService {
     private readonly userService: UserService,
   ) {}
 
-  async setPermission(setRoleDto: SetRoleDto): Promise<PermissionEntity> {
+  async setPermission(setPermsDto: SetPermsDto): Promise<PermissionEntity> {
     const permissionEntity = await this.permissionsRepository.findOne({
       where: {
-        userUUID: setRoleDto.userUUID,
-        driveId: setRoleDto.driveUUID,
-        name: setRoleDto.name,
+        userUUID: setPermsDto.userUUID,
+        driveId: setPermsDto.driveUUID,
+        name: setPermsDto.name,
       },
     });
+
     if (permissionEntity) {
-      if (RolePerms[setRoleDto.role] > RolePerms[permissionEntity.role]) {
-        permissionEntity.role = setRoleDto.role;
+      if (RolePerms[setPermsDto.role] > RolePerms[permissionEntity.role]) {
+        permissionEntity.role = setPermsDto.role;
       }
-      if (permissionEntity.expireAt && !setRoleDto.permsExpireAt) {
+
+      if (permissionEntity.expireAt && !setPermsDto.permsExpireAt) {
         permissionEntity.expireAt = null;
       }
+
       return await this.permissionsRepository.save(permissionEntity);
     }
 
     return await this.permissionsRepository.save({
-      userUUID: setRoleDto.userUUID,
-      driveId: setRoleDto.driveUUID,
-      name: setRoleDto.name,
-      role: setRoleDto.role,
-      expireAt: setRoleDto.permsExpireAt,
+      userUUID: setPermsDto.userUUID,
+      driveId: setPermsDto.driveUUID,
+      name: setPermsDto.name,
+      role: setPermsDto.role,
+      expireAt: setPermsDto.permsExpireAt,
     });
   }
 

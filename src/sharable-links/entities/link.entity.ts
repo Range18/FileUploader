@@ -6,7 +6,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
 
 @Entity()
 export class LinkEntity {
@@ -17,9 +16,6 @@ export class LinkEntity {
   userShared: string;
 
   @Column({ nullable: false })
-  destination: string;
-
-  @Column({ nullable: false, default: DEFAULT_FILE_NAME })
   name: string;
 
   @Column({ nullable: false })
@@ -31,6 +27,9 @@ export class LinkEntity {
 
   @Column({ nullable: false, default: false })
   isPrivate: boolean;
+
+  @Column({ nullable: true, default: null })
+  userToShare?: string;
 
   @Column({ default: null })
   usesLimit?: number;
