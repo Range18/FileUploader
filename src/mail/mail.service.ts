@@ -1,21 +1,14 @@
-import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { createTransport, Transporter } from 'nodemailer';
 import { MailDto } from './Dto/MailDto';
 import { smtpSettings } from '@/common/configs/smtpConfig';
-import { ApiException } from '@/common/Exceptions/ApiException';
-import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
-import { UserService } from '@/user/user.service';
-import { PassResetService } from '@/user/passReset/passReset.service';
 import { apiServer, frontendServer } from '@/common/configs/config';
 
 @Injectable()
 export class MailService {
   private readonly transporter: Transporter;
 
-  constructor(
-    private readonly userService: UserService,
-    private readonly passResetService: PassResetService,
-  ) {
+  constructor() {
     this.transporter = createTransport(smtpSettings);
   }
 
@@ -38,20 +31,7 @@ export class MailService {
     await this.sendEMail(new MailDto('verify', recipient, link));
   }
 
-  async sendPassResetEmail(recipient: string) {
-    const user = await this.userService.findOneByEmail(recipient);
-
-    if (!user) {
-      throw new ApiException(
-        HttpStatus.NOT_FOUND,
-        'UserExceptions',
-        UserExceptions.UserNotFound,
-      );
-    }
-
-    const code = (await this.passResetService.createPassResetCode(user.UUID))
-      .code;
-
+  async sendPassResetEmail(recipient: string, code: string) {
     await this.sendEMail(
       new MailDto(
         'passwordReset',
@@ -61,11 +41,11 @@ export class MailService {
     );
   }
 
-  async sendSharingFileEmail(recepient: string, link: string) {
+  async sendSharingFileEmail(recipient: string, link: string) {
     await this.sendEMail(
       new MailDto(
         'ShareFileAccess',
-        recepient,
+        recipient,
         `${apiServer.url}/drive/set/permissions/${link}`,
       ),
     );

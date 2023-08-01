@@ -2,6 +2,8 @@ import * as env from 'env-var';
 import 'dotenv/config';
 import ms from 'ms';
 
+export const isDevMode = env.get('DEV_MODE').default(1).asBool();
+
 export const apiServer = {
   port: env.get('API_PORT').default(3000).asPortNumber(),
   host: env.get('API_HOST').default('localhost').asString(),

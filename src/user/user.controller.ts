@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpStatus,
-  Param,
-  Put,
-  Query,
-} from '@nestjs/common';
-import { PassResetService } from './passReset/passReset.service';
+import { Body, Controller, Get, HttpStatus, Put, Query } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
@@ -17,21 +8,17 @@ import { UserPayload } from './userPayload';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
 import { GetUserRdo } from './rdo/get-user.rdo';
+import { MailService } from '@/mail/mail.service';
+import { apiServer } from '@/common/configs/config';
+import { VerificationService } from '@/auth/verification/verification.service';
 
 @Controller('user')
 export class UserController {
   constructor(
-    private passResetService: PassResetService,
-    private userService: UserService,
+    private readonly userService: UserService,
+    private readonly mailService: MailService,
+    private readonly verificationService: VerificationService,
   ) {}
-
-  @Put('reset/password/:code')
-  async resetPassword(
-    @Param('code') code: string,
-    @Body('password') password: string,
-  ) {
-    await this.userService.resetPassword(code, password);
-  }
 
   @IsVerified()
   @AuthGuard()
@@ -53,7 +40,7 @@ export class UserController {
   ) {
     await this.userService.changeUsername(user.UUID, newUsername);
   }
-  //TODO
+
   @Put('change/email/')
   @AuthGuard()
   async changeEmail(
@@ -64,6 +51,12 @@ export class UserController {
       property: user.email,
       newProperty: newEmail,
     });
+
+    const link = `${apiServer.url}/auth/verify/${
+      (await this.verificationService.createCode(user.UUID)).code
+    }`;
+
+    await this.mailService.sendVerifyEmail(newEmail, link);
   }
 
   //TODO

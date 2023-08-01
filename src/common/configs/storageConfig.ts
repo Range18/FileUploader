@@ -6,4 +6,5 @@ export const storageConfig = {
     .get('MAX_FILE_SIZE')
     .default(1024 ** 4)
     .asIntPositive(),
+  compressionLevel: env.get('LEVEL_OF_COMPRESSION').required().asIntPositive(),
 };

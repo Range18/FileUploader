@@ -11,7 +11,7 @@ type MailSubjects = {
 };
 
 type MailMessages = {
-  [key in MailType]: { createMessage(link?: string): string };
+  [key in MailType]: { createMessage(link: string): string };
 };
 export const SUPPORT_EMAIL_ADDRESS = smtpSettings.auth.user;
 export const mailSubjects: Readonly<MailSubjects> = {
@@ -43,12 +43,12 @@ export const mailMessages: Readonly<MailMessages> = {
     },
   },
   PasswordResetSuccess: {
-    createMessage() {
+    createMessage(link: string) {
       return `
            <div>
               <h1>Your password succesfully changed</h1>
               <div>If it was not you, you must tell that to out oficial support</div>
-              <a href='${SUPPORT_EMAIL_ADDRESS}'>Our support</a>
+              <a href='${link}'>Our support</a>
            </div>
             `;
     },

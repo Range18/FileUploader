@@ -79,9 +79,17 @@ export class StorageController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { buffer, mimetype } = await this.storageService.getFile(filename);
-    res.set({
-      'Content-Type': `${mimetype}`,
-    });
+
+    if (mimetype === 'folder') {
+      res.set({
+        'Content-Type': 'application/zip',
+      });
+    } else {
+      res.set({
+        'Content-Type': `${mimetype}`,
+      });
+    }
+
     return buffer;
   }
 

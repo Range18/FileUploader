@@ -52,6 +52,7 @@ export class StorageService {
 
         const user: UserPayload = req['user'];
         const path: string = (req.query['path'] as string) ?? '';
+
         const storageId: string =
           Boolean(req.query['storageId']) === false
             ? user.UUID
@@ -153,9 +154,19 @@ export class StorageService {
       );
     }
 
-    const file = createReadStream(
-      join(storageConfig.storagePath, fileEntity.destination, fileEntity.name),
-    );
+    let fileDest: string;
+
+    if (fileEntity.type === 'folder') {
+      fileDest = await this.fsService.zipFolder(fileEntity);
+    } else {
+      fileDest = join(
+        storageConfig.storagePath,
+        fileEntity.destination,
+        fileEntity.name,
+      );
+    }
+
+    const file = createReadStream(fileDest);
 
     return { buffer: new StreamableFile(file), mimetype: fileEntity.type };
   }

@@ -1,11 +1,15 @@
-import { mailMessages, mailSubjects, MailType } from '@/mail/mail.constants';
+import {
+  mailMessages,
+  mailSubjects,
+  MailType,
+  SUPPORT_EMAIL_ADDRESS,
+} from '@/mail/mail.constants';
 
 export class MailDto {
   mailType: MailType;
   recipient: string;
   subject: string;
   message: string;
-  //TODO link null if PasswordResetSuccess mailType
   constructor(mailType: MailType, recipient: string, link: string) {
     this.mailType = mailType;
     this.recipient = recipient;
@@ -23,7 +27,9 @@ export class MailDto {
 
       case 'PasswordResetSuccess':
         this.subject = mailSubjects.PasswordResetSuccess;
-        this.message = mailMessages.PasswordResetSuccess.createMessage();
+        this.message = mailMessages.PasswordResetSuccess.createMessage(
+          SUPPORT_EMAIL_ADDRESS,
+        );
         break;
 
       case 'ShareFileAccess':

@@ -2,15 +2,19 @@ import { Injectable } from '@nestjs/common';
 import * as yauzl from 'yauzl';
 import { Entry, ZipFile } from 'yauzl';
 import { mkdir, rename, stat, unlink } from 'fs/promises';
+import * as path from 'path';
 import { extname, join, normalize } from 'path';
 import * as mime from 'mime';
 import { createWriteStream } from 'fs';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { spawn } from 'child_process';
 import { uid } from 'uid';
 import { FILE_NAMES_SIZE } from '@/storage/storage.constants';
+import { storageConfig } from '@/common/configs/storageConfig';
+import * as archiver from 'archiver';
+import { isDevMode } from '@/common/configs/config';
 
 @Injectable()
 export class FsService {
@@ -135,9 +139,6 @@ export class FsService {
                 readStream.pipe(file);
 
                 file.on('finish', async () => {
-                  console.log(entry);
-                  console.log(filepath);
-                  console.log(mime.getType(join(unzipToDir, filepath)));
                   await this.fsRepository.save({
                     driveUUID: userUUID,
                     originalName: entry.fileName.split('/').slice(-1).join(''),
@@ -147,6 +148,7 @@ export class FsService {
                     type: mime.getType(join(unzipToDir, filepath)) ?? 'untyped',
                     size: entry.uncompressedSize,
                   });
+
                   const folder = processedFolders.get(pathToReplace);
 
                   processedFolders.set(pathToReplace, {
@@ -207,6 +209,72 @@ export class FsService {
         },
       );
     });
+  }
+
+  async zipFolder(fileEntity: FileSystemEntity): Promise<string> {
+    const archive = archiver.create('zip', {
+      zlib: { level: storageConfig.compressionLevel },
+    });
+    const outputPath = path.join(
+      storageConfig.storagePath,
+      fileEntity.destination,
+      `${fileEntity.name}.zip`,
+    );
+    const output = createWriteStream(outputPath);
+
+    if (isDevMode) {
+      output.on('close', () => {
+        console.log(archive.pointer() + ' total bytes');
+      });
+    }
+
+    archive.on('warning', (error) => {
+      if (error.code === 'ENOENT') {
+        console.log(error);
+      } else {
+        throw error;
+      }
+    });
+
+    archive.on('error', (error) => {
+      throw error;
+    });
+
+    archive.pipe(output);
+
+    const childFiles: FileSystemEntity[] = await this.fsRepository.find({
+      where: { destination: Like(`%${fileEntity.name}%`) },
+    });
+
+    for (const childFile of childFiles) {
+      if (childFile.type === 'folder') {
+        archive.directory(
+          path.join(
+            storageConfig.storagePath,
+            childFile.destination,
+            childFile.name,
+          ),
+          childFile.name,
+        );
+      } else if (
+        childFile.destination ===
+        join(fileEntity.destination, fileEntity.name) + '\\'
+      ) {
+        archive.file(
+          join(
+            storageConfig.storagePath,
+            childFile.destination,
+            childFile.name,
+          ),
+          { name: childFile.name },
+        );
+      }
+    }
+
+    await archive.finalize();
+    output.close();
+
+    return outputPath;
   }
 
   async checkPathExists(path: string): Promise<boolean> {

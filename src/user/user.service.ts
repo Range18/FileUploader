@@ -5,10 +5,8 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
-import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
 import * as bcrypt from 'bcrypt';
 import { bcryptRounds } from '@/common/configs/config';
-import { PassResetService } from './passReset/passReset.service';
 import { AuthExceptions } from '@/common/Exceptions/ExceptionTypes/AuthExceptions';
 import { updateUserDto } from '@/user/dto/update-user.dto';
 
@@ -17,7 +15,6 @@ export class UserService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
-    private readonly passResetService: PassResetService,
   ) {}
 
   // Methods to find users
@@ -71,37 +68,6 @@ export class UserService {
     await this.saveUser(user);
   }
 
-  async resetPassword(code: string, newPassword: string) {
-    const passResetRecord = await this.passResetService.findPassResetCode(code);
-    if (!passResetRecord) {
-      throw new ApiException(
-        HttpStatus.BAD_REQUEST,
-        'TokenExceptions',
-        TokenExceptions.InvalidToken,
-      );
-    }
-    if (passResetRecord.expireIn < new Date(Date.now())) {
-      throw new ApiException(
-        HttpStatus.BAD_REQUEST,
-        'TokenExceptions',
-        TokenExceptions.TokenExpired,
-      );
-    }
-    const user = await this.findByUUID(passResetRecord.userUUID);
-    if (!user) {
-      throw new ApiException(
-        HttpStatus.NOT_FOUND,
-        'UserExceptions',
-        UserExceptions.UserNotFound,
-      );
-    }
-
-    user.password = await bcrypt.hash(newPassword, bcryptRounds);
-    await this.saveUser(user);
-
-    await this.passResetService.deletePassResetCode(code);
-  }
-
   async changePassword(email: string, password: string, newPassword: string) {
     const user = await this.userRepository.findOneBy({ email });
     if (!user) {
@@ -146,7 +112,6 @@ export class UserService {
     }
     user.email = changeEmailDto.newProperty;
     await this.saveUser(user);
-    //TODO send verifyEmail
   }
 
   async delete(options: FindOptionsWhere<UserEntity>) {
