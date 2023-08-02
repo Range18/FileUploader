@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { createTransport, Transporter } from 'nodemailer';
 import { MailDto } from './Dto/MailDto';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { smtpSettings } from '@/common/configs/smtpConfig';
 import { apiServer, frontendServer } from '@/common/configs/config';
+import { createTransport, Transporter } from 'nodemailer';
 
 @Injectable()
 export class MailService {
@@ -21,7 +21,7 @@ export class MailService {
         text: '',
         html: mailDto.message,
       })
-      .catch(async (err) => {
+      .catch((err) => {
         console.log(err);
         throw new BadRequestException(err, { cause: err });
       });

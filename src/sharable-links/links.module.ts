@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
 import { LinksService } from './links.service';
 import { LinksController } from './links.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { LinkEntity } from './entities/link.entity';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Module } from '@nestjs/common';
 import { UserModule } from '@/user/user.module';
 import { StorageModule } from '@/storage/storage.module';
 import { PermissionsModule } from '@/permissions/permissions.module';

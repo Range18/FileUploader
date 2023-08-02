@@ -1,6 +1,6 @@
+import { VerificationCodeEntity } from './entities/verificationCode.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { VerificationCodeEntity } from './entities/verificationCode.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()

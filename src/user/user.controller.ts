@@ -1,13 +1,13 @@
-import { Body, Controller, Get, HttpStatus, Put, Query } from '@nestjs/common';
 import { UserService } from './user.service';
+import { UserPayload } from './userPayload';
+import { GetUserRdo } from './rdo/get-user.rdo';
+import { Body, Controller, Get, HttpStatus, Put, Query } from '@nestjs/common';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { ValidateQueryPipe } from '@/common/pipes/validateQuery.pipe';
 import { User } from '@/common/decorators/User.decorator';
-import { UserPayload } from './userPayload';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
-import { GetUserRdo } from './rdo/get-user.rdo';
 import { MailService } from '@/mail/mail.service';
 import { apiServer } from '@/common/configs/config';
 import { VerificationService } from '@/auth/verification/verification.service';
@@ -64,13 +64,6 @@ export class UserController {
   // @UseGuards(AuthGuard)
   // async deleteUser() {
   // }
-
-  /*TODO
-    @Post('download/data')
-    @UseGuards(AuthGuard,VerificationGuard)
-    async downloadUserData() {
-    }
-    */
 
   @Get()
   async getUserInfo(

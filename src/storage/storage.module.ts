@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { FileSystemEntity } from './entities/fileSystemEntity';
 import { StorageController } from './storage.controller';
 import { StorageService } from './storage.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Module } from '@nestjs/common';
 import { UserModule } from '@/user/user.module';
 import { FsService } from '@/storage/fs.service';
 import { PermissionsModule } from '@/permissions/permissions.module';

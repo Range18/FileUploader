@@ -1,3 +1,4 @@
+import { FileSystemEntity } from './entities/fileSystemEntity';
 import {
   HttpStatus,
   Injectable,
@@ -5,19 +6,12 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FileSystemEntity } from './entities/fileSystemEntity';
-import { FindOneOptions, Like, Repository } from 'typeorm';
 import { UserPayload } from '@/user/userPayload';
 import { UserService } from '@/user/user.service';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { FileExceptions } from '@/common/Exceptions/ExceptionTypes/FileExceptions';
-import { createReadStream, existsSync } from 'fs';
-import { extname, join, normalize } from 'path';
-import { readdir, stat } from 'fs/promises';
 import { storageConfig } from '@/common/configs/storageConfig';
-import { diskStorage } from 'multer';
-import { Request } from 'express';
 import { UserEntity } from '@/user/entities/user.entity';
 import { FsService } from '@/storage/fs.service';
 import {
@@ -27,8 +21,14 @@ import {
 import { PermissionEntity } from '@/permissions/entities/permissions.entity';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
-import { uid } from 'uid';
 import { Roles } from '@/permissions/roles.constant';
+import { uid } from 'uid';
+import { Request } from 'express';
+import { diskStorage } from 'multer';
+import { FindOneOptions, Like, Repository } from 'typeorm';
+import { readdir, stat } from 'fs/promises';
+import { extname, join, normalize } from 'path';
+import { createReadStream } from 'fs';
 
 @Injectable()
 export class StorageService {
@@ -72,18 +72,17 @@ export class StorageService {
         }
 
         const dirname = `${storageConfig.storagePath}/${storageId}${path}`;
-        const directories = dirname.slice(1).split('\\');
-        let checkingPath = '.\\';
-        for (let i = 0; i < directories.length; i++) {
-          checkingPath += `\\${directories[i]}`;
-          if (!existsSync(checkingPath)) {
-            callback(
-              new NotFoundException('FileException', {
-                cause: FileExceptions.FileNotFound,
-              }),
-              '',
-            );
-          }
+        if (
+          !stat(dirname)
+            .then(() => true)
+            .catch(() => false)
+        ) {
+          callback(
+            new NotFoundException('FileException', {
+              cause: FileExceptions.FileNotFound,
+            }),
+            '',
+          );
         }
         callback(null, dirname);
       },
@@ -119,7 +118,7 @@ export class StorageService {
       const unzipToDir = `${file.destination}`;
       await this.fsService
         .saveAsFolder(file, destination, unzipToDir, user.UUID)
-        .catch(async (err) => {
+        .catch((err) => {
           console.log(err);
           throw new ApiException(
             HttpStatus.BAD_REQUEST,
@@ -166,9 +165,36 @@ export class StorageService {
       );
     }
 
-    const file = createReadStream(fileDest);
+    return {
+      buffer: new StreamableFile(createReadStream(fileDest)),
+      mimetype: fileEntity.type,
+    };
+  }
 
-    return { buffer: new StreamableFile(file), mimetype: fileEntity.type };
+  async downloadPersonalData(userUUID: string) {
+    const user = await this.userService.findByUUID(userUUID);
+
+    if (!user) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'UserExceptions',
+        UserExceptions.UserNotFound,
+      );
+    }
+
+    const dataPath = join(storageConfig.storagePath, userUUID);
+
+    if (!(await this.fsService.checkPathExists(dataPath))) {
+      throw new ApiException(
+        HttpStatus.NOT_FOUND,
+        'FileExceptions',
+        FileExceptions.StorageNotFound,
+      );
+    }
+
+    const zippedDataPath = await this.fsService.zipFolder(dataPath);
+
+    return { buffer: new StreamableFile(createReadStream(zippedDataPath)) };
   }
 
   async getFileSystemEntity(options: FindOneOptions<FileSystemEntity>) {
@@ -494,9 +520,9 @@ export class StorageService {
 
     return dirContentDto;
   }
-  async formatPermEntities(
+  formatPermEntities(
     permissionEntities: PermissionEntity[],
-  ): Promise<Promise<FileRdo>[]> {
+  ): Promise<FileRdo>[] {
     return permissionEntities.map(
       async (permissionEntity): Promise<FileRdo> => {
         const fileEntity = await this.filesRepository.findOne({

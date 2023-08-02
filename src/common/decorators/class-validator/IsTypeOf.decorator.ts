@@ -1,8 +1,4 @@
-import {
-  registerDecorator,
-  ValidationArguments,
-  ValidationOptions,
-} from 'class-validator';
+import { registerDecorator, ValidationOptions } from 'class-validator';
 
 export function IsTypeOf(type: string, validationOptions?: ValidationOptions) {
   return function (object: NonNullable<unknown>, propertyName: string) {
@@ -68,7 +64,7 @@ export function IsTypeOf(type: string, validationOptions?: ValidationOptions) {
           return typeof value === type;
         },
 
-        defaultMessage(validationArguments?: ValidationArguments): string {
+        defaultMessage(): string {
           return `${propertyName} must be a ${type}`;
         },
       },

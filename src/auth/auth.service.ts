@@ -1,22 +1,22 @@
+import { VerificationService } from './verification/verification.service';
+import { LoginDto } from './dto/login.dto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { UserService } from '@/user/user.service';
-import * as bcrypt from 'bcrypt';
 import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
 import { SessionService } from '@/session/session.service';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { apiServer, bcryptRounds } from '@/common/configs/config';
-import { VerificationService } from './verification/verification.service';
 import { MailService } from '@/mail/mail.service';
 
 import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
 import { AuthExceptions } from '@/common/Exceptions/ExceptionTypes/AuthExceptions';
 import { SessionExceptions } from '@/common/Exceptions/ExceptionTypes/SessionExceptions';
 import { StorageService } from '@/storage/storage.service';
-import { LoginDto } from './dto/login.dto';
-import { isEmail } from 'class-validator';
 import { CreateSession } from '@/common/types/createSession';
+import { isEmail } from 'class-validator';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {

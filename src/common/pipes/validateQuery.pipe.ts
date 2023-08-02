@@ -1,11 +1,11 @@
-import { ArgumentMetadata, HttpStatus, PipeTransform } from '@nestjs/common';
 import { ApiException } from '../Exceptions/ApiException';
 import { OtherExceptions } from '../Exceptions/ExceptionTypes/OtherExceptions';
+import { HttpStatus, PipeTransform } from '@nestjs/common';
 
 export class ValidateQueryPipe implements PipeTransform {
   constructor(private allowedQueries: string[]) {}
 
-  transform(value: any, metadata: ArgumentMetadata): any {
+  transform(value: any): any {
     let isAllowed = false;
     for (const elem of this.allowedQueries) {
       if (value == elem) {

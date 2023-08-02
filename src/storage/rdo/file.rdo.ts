@@ -1,5 +1,5 @@
-import { Expose } from 'class-transformer';
 import { Roles } from '@/permissions/roles.constant';
+import { Expose } from 'class-transformer';
 
 export class FileRdo {
   @Expose()

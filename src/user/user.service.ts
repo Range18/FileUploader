@@ -1,14 +1,14 @@
+import { UserEntity } from './entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserEntity } from './entities/user.entity';
-import { FindOptionsWhere, Repository } from 'typeorm';
-import { CreateUserDto } from './dto/create-user.dto';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
-import * as bcrypt from 'bcrypt';
 import { bcryptRounds } from '@/common/configs/config';
 import { AuthExceptions } from '@/common/Exceptions/ExceptionTypes/AuthExceptions';
 import { updateUserDto } from '@/user/dto/update-user.dto';
+import * as bcrypt from 'bcrypt';
+import { FindOptionsWhere, Repository } from 'typeorm';
 
 @Injectable()
 export class UserService {

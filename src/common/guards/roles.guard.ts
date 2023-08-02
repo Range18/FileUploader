@@ -1,3 +1,5 @@
+import { ApiException } from '../Exceptions/ApiException';
+import { FileExceptions } from '../Exceptions/ExceptionTypes/FileExceptions';
 import {
   CanActivate,
   ExecutionContext,
@@ -5,8 +7,6 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ApiException } from '../Exceptions/ApiException';
-import { FileExceptions } from '../Exceptions/ExceptionTypes/FileExceptions';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { StorageService } from '@/storage/storage.service';
 

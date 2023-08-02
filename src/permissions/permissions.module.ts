@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
 import { PermissionsService } from './permissions.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { PermissionEntity } from './entities/permissions.entity';
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from '@/user/user.module';
 
 @Module({

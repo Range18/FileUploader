@@ -1,5 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('permissions')
 export class PermissionEntity {

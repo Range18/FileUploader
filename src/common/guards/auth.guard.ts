@@ -1,17 +1,17 @@
+import { ApiException } from '../Exceptions/ApiException';
 import {
   CanActivate,
   ExecutionContext,
   HttpStatus,
   Injectable,
 } from '@nestjs/common';
-import { Request } from 'express';
-import { ApiException } from '../Exceptions/ApiException';
 import { TokenService } from '@/token/token.service';
 import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
 import { UserPayload } from '@/user/userPayload';
 import { SessionService } from '@/session/session.service';
 import { SessionEntity } from '@/session/entities/sessions.entity';
 import { SessionExceptions } from '@/common/Exceptions/ExceptionTypes/SessionExceptions';
+import { Request } from 'express';
 
 @Injectable()
 export class AuthGuardClass implements CanActivate {

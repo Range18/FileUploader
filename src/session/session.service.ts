@@ -1,12 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { Repository } from 'typeorm';
 import { SessionEntity } from './entities/sessions.entity';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { UserPayload } from '@/user/userPayload';
 import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
-import { InjectRepository } from '@nestjs/typeorm';
 import { jwtSettings } from '@/common/configs/config';
 import { TokenService } from '@/token/token.service';
 import { CreateSession } from '@/common/types/createSession';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class SessionService {

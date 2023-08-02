@@ -1,20 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import * as yauzl from 'yauzl';
-import { Entry, ZipFile } from 'yauzl';
-import { mkdir, rename, stat, unlink } from 'fs/promises';
-import * as path from 'path';
-import { extname, join, normalize } from 'path';
-import * as mime from 'mime';
-import { createWriteStream } from 'fs';
-import { Like, Repository } from 'typeorm';
-import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { spawn } from 'child_process';
-import { uid } from 'uid';
+import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 import { FILE_NAMES_SIZE } from '@/storage/storage.constants';
 import { storageConfig } from '@/common/configs/storageConfig';
-import * as archiver from 'archiver';
 import { isDevMode } from '@/common/configs/config';
+import * as yauzl from 'yauzl';
+import { Entry, ZipFile } from 'yauzl';
+import * as mime from 'mime';
+import { Repository } from 'typeorm';
+import { uid } from 'uid';
+import * as archiver from 'archiver';
+import { mkdir, rename, stat, unlink } from 'fs/promises';
+import { extname, join, normalize } from 'path';
+import { createWriteStream } from 'fs';
+import { spawn } from 'child_process';
 
 @Injectable()
 export class FsService {
@@ -145,7 +144,7 @@ export class FsService {
                     name: filename,
                     destination: normalize(FolderDestination + dest),
                     //TODO Why not default column value
-                    type: mime.getType(join(unzipToDir, filepath)) ?? 'untyped',
+                    type: mime.getType(join(unzipToDir, filepath)),
                     size: entry.uncompressedSize,
                   });
 
@@ -211,15 +210,37 @@ export class FsService {
     });
   }
 
-  async zipFolder(fileEntity: FileSystemEntity): Promise<string> {
+  async zipFolder(path: string): Promise<string>;
+  async zipFolder(fileEntity: FileSystemEntity): Promise<string>;
+  async zipFolder(
+    fileEntityOrPath: string | FileSystemEntity,
+  ): Promise<string> {
     const archive = archiver.create('zip', {
       zlib: { level: storageConfig.compressionLevel },
     });
-    const outputPath = path.join(
-      storageConfig.storagePath,
-      fileEntity.destination,
-      `${fileEntity.name}.zip`,
-    );
+
+    const isPath = typeof fileEntityOrPath === 'string';
+
+    const driveUUID = isPath
+      ? normalize(fileEntityOrPath).split('\\').at(-1)
+      : fileEntityOrPath.driveUUID;
+
+    let outputPath: string;
+
+    if (isPath) {
+      outputPath =
+        fileEntityOrPath +
+        '\\' +
+        normalize(fileEntityOrPath).split('\\').at(-1) +
+        '.zip';
+    } else {
+      outputPath = join(
+        storageConfig.storagePath,
+        fileEntityOrPath.destination,
+        `${fileEntityOrPath.name}.zip`,
+      );
+    }
+
     const output = createWriteStream(outputPath);
 
     if (isDevMode) {
@@ -242,34 +263,17 @@ export class FsService {
 
     archive.pipe(output);
 
-    const childFiles: FileSystemEntity[] = await this.fsRepository.find({
-      where: { destination: Like(`%${fileEntity.name}%`) },
-    });
+    const pathToZip = isPath
+      ? fileEntityOrPath
+      : join(
+          storageConfig.storagePath,
+          fileEntityOrPath.driveUUID,
+          fileEntityOrPath.name,
+        );
 
-    for (const childFile of childFiles) {
-      if (childFile.type === 'folder') {
-        archive.directory(
-          path.join(
-            storageConfig.storagePath,
-            childFile.destination,
-            childFile.name,
-          ),
-          childFile.name,
-        );
-      } else if (
-        childFile.destination ===
-        join(fileEntity.destination, fileEntity.name) + '\\'
-      ) {
-        archive.file(
-          join(
-            storageConfig.storagePath,
-            childFile.destination,
-            childFile.name,
-          ),
-          { name: childFile.name },
-        );
-      }
-    }
+    const name = isPath ? driveUUID : fileEntityOrPath.name;
+
+    archive.directory(pathToZip, name);
 
     await archive.finalize();
     output.close();

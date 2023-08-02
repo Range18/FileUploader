@@ -1,3 +1,4 @@
+import { PASSWORD, USERNAME } from '@/user/user.constants';
 import {
   IsEmail,
   IsNotEmpty,
@@ -5,7 +6,6 @@ import {
   IsStrongPassword,
   Length,
 } from 'class-validator';
-import { PASSWORD, USERNAME } from '@/user/user.constants';
 
 export class CreateUserDto {
   @Length(USERNAME.MIN, USERNAME.MAX)

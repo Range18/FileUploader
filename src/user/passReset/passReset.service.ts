@@ -1,7 +1,6 @@
+import { PwdResetCodeEntity } from './entities/pwdResetCode.entity';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { PwdResetCodeEntity } from './entities/pwdResetCode.entity';
-import { Repository } from 'typeorm';
 
 import { bcryptRounds, pwdResetExpire } from '@/common/configs/config';
 import { UserService } from '@/user/user.service';
@@ -9,6 +8,7 @@ import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
 import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExceptions';
 import * as bcrypt from 'bcrypt';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class PassResetService {

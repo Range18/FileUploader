@@ -1,5 +1,4 @@
 import { UserExceptions } from './ExceptionTypes/UserExceptions';
-import { HttpException, HttpStatus } from '@nestjs/common';
 import { TokenExceptions } from './ExceptionTypes/TokenExceptions';
 import { AuthExceptions } from './ExceptionTypes/AuthExceptions';
 import {
@@ -8,6 +7,7 @@ import {
 } from './ExceptionTypes/OtherExceptions';
 import { SessionExceptions } from './ExceptionTypes/SessionExceptions';
 import { FileExceptions } from './ExceptionTypes/FileExceptions';
+import { HttpException, HttpStatus } from '@nestjs/common';
 
 const customExceptions = {
   AuthExceptions,

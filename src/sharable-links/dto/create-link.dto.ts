@@ -1,3 +1,5 @@
+import { IsTypeOf } from '@/common/decorators/class-validator/IsTypeOf.decorator';
+import { InCompatibleWith } from '@/common/decorators/class-validator/InCompatibleWith.decorator';
 import {
   IsBoolean,
   IsEmail,
@@ -7,9 +9,7 @@ import {
   IsString,
 } from 'class-validator';
 import { StringValue } from 'ms';
-import { IsTypeOf } from '@/common/decorators/class-validator/IsTypeOf.decorator';
 import { Transform } from 'class-transformer';
-import { InCompatibleWith } from '@/common/decorators/class-validator/InCompatibleWith.decorator';
 
 export class CreateLinkDto {
   @IsString()
@@ -23,6 +23,7 @@ export class CreateLinkDto {
   @IsBoolean()
   @Transform(({ value }) => value === 'true')
   @InCompatibleWith(['userToShare', 'usesLimit', 'permsExpireIn', 'expireIn'])
+  @IsOptional()
   isPrivate?: boolean;
 
   @IsEmail()

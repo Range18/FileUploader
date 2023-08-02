@@ -1,3 +1,4 @@
+import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
 import {
   Column,
   CreateDateColumn,
@@ -5,7 +6,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
 
 @Entity('files')
 export class FileSystemEntity {
@@ -24,7 +24,7 @@ export class FileSystemEntity {
   @Column({ nullable: false })
   destination: string;
 
-  @Column({ nullable: true, default: 'untyped' })
+  @Column({ nullable: true })
   type: string;
 
   @Column({ nullable: false })

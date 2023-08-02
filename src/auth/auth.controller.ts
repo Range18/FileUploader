@@ -1,3 +1,5 @@
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
 import {
   Body,
   Controller,
@@ -8,13 +10,11 @@ import {
   Redirect,
   Res,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
 import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
-import { Response } from 'express';
 import { Cookies } from '@/common/decorators/cookies.decorator';
 import { frontendServer, jwtSettings } from '@/common/configs/config';
-import { LoginDto } from './dto/login.dto';
+import { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {

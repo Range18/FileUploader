@@ -1,3 +1,4 @@
+import { StorageService } from './storage.service';
 import {
   Body,
   Controller,
@@ -10,18 +11,17 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { UserPayload } from '@/user/userPayload';
 import { User } from '@/common/decorators/User.decorator';
-import { StorageService } from './storage.service';
 import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
-import { Response } from 'express';
 import { MakeDirDto } from '@/storage/dto/makeDir.dto';
 import { SetDefaultStorageQueryInterceptor } from '@/common/interceptors/setDefaultStorageQuery.interceptor';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
+import { Response } from 'express';
 
 @Controller('drive')
 export class StorageController {
@@ -83,6 +83,10 @@ export class StorageController {
     if (mimetype === 'folder') {
       res.set({
         'Content-Type': 'application/zip',
+      });
+    } else if (!mimetype) {
+      res.set({
+        'Content-Type': 'text/plain',
       });
     } else {
       res.set({
@@ -160,5 +164,24 @@ export class StorageController {
       user.UUID,
     );
     return await this.storageService.formatPermEntities(permissionEntities);
+  }
+
+  @RolesGuard('owner')
+  @IsVerified()
+  @AuthGuard()
+  @Get('download/data')
+  async downloadUserData(
+    @Res({ passthrough: true }) res: Response,
+    @User() user: UserPayload,
+  ) {
+    const { buffer } = await this.storageService.downloadPersonalData(
+      user.UUID,
+    );
+
+    res.set({
+      'Content-Type': 'application/zip',
+    });
+
+    return buffer;
   }
 }
