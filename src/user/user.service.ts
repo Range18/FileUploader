@@ -27,7 +27,9 @@ export class UserService {
   }
 
   async findByUUID(UUID: string): Promise<UserEntity | null> {
-    return await this.userRepository.findOne({ where: { UUID } });
+    return await this.userRepository.findOne({
+      where: { UUID },
+    });
   }
 
   async findOne(

@@ -3,17 +3,23 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { UserEntity } from '@/user/entities/user.entity';
 
 @Entity('files')
 export class FileSystemEntity {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
-  @Column({ nullable: false })
-  driveUUID: string;
+  @ManyToOne(() => UserEntity, (userEntity) => userEntity.files, {
+    nullable: false,
+  })
+  @JoinColumn({ name: 'driveUUID' })
+  owner: UserEntity;
 
   @Column({ nullable: false, default: DEFAULT_FILE_NAME })
   originalName: string;

@@ -39,17 +39,6 @@ export class StorageService {
         file: Express.Multer.File,
         callback,
       ) => {
-        // Create folder if it doesn't exist
-        if (
-          !(await stat(storageConfig.storagePath)
-            .then(() => true)
-            .catch(() => false))
-        ) {
-          throw new NotFoundException(
-            `Storage directory \" ${storageConfig.storagePath} \" not found`,
-          );
-        }
-
         const user: UserPayload = req['user'];
         const path: string = (req.query['path'] as string) ?? '';
 
@@ -129,7 +118,7 @@ export class StorageService {
       return;
     }
     await this.filesRepository.save({
-      driveUUID: user.UUID,
+      owner: user,
       originalName: file.originalname,
       name: file.filename,
       destination: normalize(destination),
@@ -236,8 +225,18 @@ export class StorageService {
       );
     }
 
+    const user = await this.userService.findByUUID(driveId);
+
+    if (!user) {
+      await new ApiException(
+        HttpStatus.NOT_FOUND,
+        'FileExceptions',
+        FileExceptions.StorageNotFound,
+      );
+    }
+
     const folderEntity = await this.filesRepository.save({
-      driveUUID: driveId,
+      owner: user,
       originalName: dirname,
       name: uid(FILE_NAMES_SIZE),
       destination: `${driveId}/${path}/`,
@@ -304,7 +303,7 @@ export class StorageService {
         }
 
         const oldDest = `${storageConfig.storagePath}/${fileEntity.destination}/${fileEntity.name}`;
-        const newDest = `${storageConfig.storagePath}/${fileEntity.driveUUID}/${newPath}/${fileEntity.name}`;
+        const newDest = `${storageConfig.storagePath}/${fileEntity.owner}/${newPath}/${fileEntity.name}`;
 
         await this.fsService.moveFile(oldDest, newDest);
 
@@ -318,7 +317,7 @@ export class StorageService {
             (elem) =>
               (elem.destination = normalize(
                 join(
-                  fileEntity.driveUUID,
+                  fileEntity.owner.UUID,
                   newPath,
                   elem.destination.split('\\').slice(2).join('\\'),
                 ),
@@ -328,20 +327,22 @@ export class StorageService {
           await this.filesRepository.save(fileEntities);
         }
 
-        fileEntity.destination = normalize(join(fileEntity.driveUUID, newPath));
+        fileEntity.destination = normalize(
+          join(fileEntity.owner.UUID, newPath),
+        );
         await this.filesRepository.save(fileEntity);
         break;
       }
 
       case 'trash': {
         const oldDest = `${storageConfig.storagePath}/${fileEntity.destination}/${fileEntity.name}`;
-        const newDest = `${storageConfig.storagePath}/${fileEntity.driveUUID}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
+        const newDest = `${storageConfig.storagePath}/${fileEntity.owner}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
 
         await this.fsService.moveFile(oldDest, newDest);
         break;
       }
       case 'untrash': {
-        const oldDest = `${storageConfig.storagePath}/${fileEntity.driveUUID}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
+        const oldDest = `${storageConfig.storagePath}/${fileEntity.owner}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
         const newDest = `${storageConfig.storagePath}/${fileEntity.destination}/${fileEntity.name}`;
 
         await this.fsService.moveFile(oldDest, newDest);
@@ -453,7 +454,7 @@ export class StorageService {
     try {
       if (fileSystemEntity.isTrashed) {
         await this.fsService.deleteFile(
-          `${storageConfig.storagePath}/${fileSystemEntity.driveUUID}/${TRASH_DIRECTORY_NAME}/${fileSystemEntity.name}`,
+          `${storageConfig.storagePath}/${fileSystemEntity.owner}/${TRASH_DIRECTORY_NAME}/${fileSystemEntity.name}`,
         );
       } else {
         await this.fsService.deleteFile(
@@ -504,7 +505,7 @@ export class StorageService {
       });
 
       dirContentDto.push({
-        driveUUID: fileSystemEntity.driveUUID,
+        driveUUID: fileSystemEntity.owner.UUID,
         type: fileSystemEntity.type,
         name: dirContent[i],
         originalName: fileSystemEntity.originalName,
@@ -534,8 +535,9 @@ export class StorageService {
           permissionEntities.splice(index, 1);
           await this.permissionsService.remove(permissionEntity);
         }
+
         return {
-          driveUUID: fileEntity.driveUUID,
+          driveUUID: fileEntity.owner.UUID,
           originalName: fileEntity.originalName,
           name: fileEntity.name,
           destination: fileEntity.destination,

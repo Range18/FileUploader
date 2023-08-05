@@ -46,9 +46,18 @@ export class RolesGuardClass implements CanActivate {
       if (!user.roles) {
         const fileSystemEntity = await this.storageService.getFileSystemEntity({
           where: { name: name },
+          loadRelationIds: { relations: ['owner'] },
         });
 
-        user.roles = fileSystemEntity.driveUUID === user.UUID ? 'owner' : [];
+        if (!fileSystemEntity) {
+          throw new ApiException(
+            HttpStatus.NOT_FOUND,
+            'FileExceptions',
+            FileExceptions.FileNotFound,
+          );
+        }
+
+        user.roles = fileSystemEntity.owner === user.UUID ? 'owner' : [];
       }
 
       const isAvailable = requiredRoles.some((role) =>

@@ -156,7 +156,7 @@ export class LinksService {
 
     await this.permissionsService.setPermission({
       userUUID: user.UUID,
-      driveUUID: fsEntity.driveUUID,
+      driveUUID: fsEntity.owner.UUID,
       name: linkEntity.name,
       role: linkEntity.setRoles,
       permsExpireAt: linkEntity.permsExpireAt,

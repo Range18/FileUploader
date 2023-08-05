@@ -22,6 +22,8 @@ import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
 import { Response } from 'express';
+import { extname } from 'path';
+import { Roles } from '@/permissions/roles.constant';
 
 @Controller('drive')
 export class StorageController {
@@ -70,9 +72,9 @@ export class StorageController {
   }
 
   //Fetch Data
-  // @RolesGuard('reader', 'editor', 'owner')
-  // @IsVerified()
-  // @AuthGuard()
+  @RolesGuard('reader', 'editor', 'owner')
+  @IsVerified()
+  @AuthGuard()
   @Get('get')
   async getFile(
     @Query('name') filename: string,
@@ -102,9 +104,27 @@ export class StorageController {
   @AuthGuard()
   @Get('get/info')
   async getFileData(@Query('name') filename: string): Promise<FileRdo> {
-    return await this.storageService.getFileSystemEntity({
+    const fileEntity = await this.storageService.getFileSystemEntity({
+      where: { name: filename },
+      loadRelationIds: { relations: ['owner'] },
+    });
+    const permsEntity = await this.permissionsService.findOne({
       where: { name: filename },
     });
+
+    return {
+      driveUUID: fileEntity.owner as unknown as string,
+      name: fileEntity.name,
+      originalName: fileEntity.originalName,
+      destination: fileEntity.destination,
+      type: fileEntity.type,
+      size: fileEntity.size,
+      isTrashed: fileEntity.isTrashed,
+      createdAt: fileEntity.createdAt,
+      updatedAt: fileEntity.updatedAt,
+      extname: extname(fileEntity.name),
+      role: permsEntity ? <Roles>permsEntity.role : 'owner',
+    };
   }
 
   @RolesGuard('editor', 'owner')

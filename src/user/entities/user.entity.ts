@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 
 @Entity('user')
 export class UserEntity {
@@ -28,4 +30,11 @@ export class UserEntity {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(
+    () => FileSystemEntity,
+    (fileSystemEntity) => fileSystemEntity.owner,
+    { nullable: true },
+  )
+  files?: FileSystemEntity[];
 }

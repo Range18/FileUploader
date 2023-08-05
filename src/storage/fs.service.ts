@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 import { FILE_NAMES_SIZE } from '@/storage/storage.constants';
@@ -14,13 +14,20 @@ import { mkdir, rename, stat, unlink } from 'fs/promises';
 import { extname, join, normalize } from 'path';
 import { createWriteStream } from 'fs';
 import { spawn } from 'child_process';
+import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
 
 @Injectable()
-export class FsService {
+export class FsService implements OnModuleInit {
   constructor(
     @InjectRepository(FileSystemEntity)
     private readonly fsRepository: Repository<FileSystemEntity>,
   ) {}
+
+  async onModuleInit() {
+    if (!(await this.checkPathExists(storageConfig.storagePath))) {
+      throw new Error(OtherExceptions.StorageRepNotFound);
+    }
+  }
 
   async saveAsFolder(
     file: Express.Multer.File,
@@ -85,7 +92,7 @@ export class FsService {
               await this.mkDir(join(unzipToDir, folderPath));
 
               await this.fsRepository.save({
-                driveUUID: userUUID,
+                owner: { UUID: userUUID },
                 originalName: entry.fileName.split('/').slice(-2, -1).at(-1),
                 name: genDirname,
                 destination: join(
@@ -139,7 +146,7 @@ export class FsService {
 
                 file.on('finish', async () => {
                   await this.fsRepository.save({
-                    driveUUID: userUUID,
+                    owner: { UUID: userUUID },
                     originalName: entry.fileName.split('/').slice(-1).join(''),
                     name: filename,
                     destination: normalize(FolderDestination + dest),
@@ -223,7 +230,7 @@ export class FsService {
 
     const driveUUID = isPath
       ? normalize(fileEntityOrPath).split('\\').at(-1)
-      : fileEntityOrPath.driveUUID;
+      : fileEntityOrPath.owner.UUID;
 
     let outputPath: string;
 
@@ -267,7 +274,7 @@ export class FsService {
       ? fileEntityOrPath
       : join(
           storageConfig.storagePath,
-          fileEntityOrPath.driveUUID,
+          fileEntityOrPath.owner.UUID,
           fileEntityOrPath.name,
         );
 

@@ -149,6 +149,7 @@ export class AuthService {
       );
     }
     const user = await this.userService.findByUUID(userData.UUID);
+
     if (!user) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
