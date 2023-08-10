@@ -189,7 +189,7 @@ export class StorageController {
     const permissionEntities = await this.permissionsService.getAvailable(
       user.UUID,
     );
-    return await this.storageService.formatPermEntities(permissionEntities);
+    return this.storageService.formatPermEntities(permissionEntities);
   }
 
   @RolesGuard('owner')
