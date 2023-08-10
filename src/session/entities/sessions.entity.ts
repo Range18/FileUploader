@@ -19,6 +19,12 @@ export class SessionEntity {
   sessionUUID: string;
 
   @Column({ nullable: false })
+  agent: string;
+
+  @Column({ nullable: false })
+  ip: string;
+
+  @Column({ nullable: false })
   expireAt: Date;
 
   @CreateDateColumn()

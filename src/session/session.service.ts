@@ -7,23 +7,31 @@ import { jwtSettings } from '@/common/configs/config';
 import { TokenService } from '@/token/token.service';
 import { CreateSession } from '@/common/types/createSession';
 import { BaseEntityService } from '@/common/base-entity.service';
+import { GetSessionRdo } from '@/session/get-session.rdo';
+import { SessionInfo } from '@/session/session-info';
 import { Repository } from 'typeorm';
 
 @Injectable()
-export class SessionService extends BaseEntityService<SessionEntity> {
+export class SessionService extends BaseEntityService<
+  SessionEntity,
+  GetSessionRdo
+> {
   constructor(
     private readonly tokenService: TokenService,
     @InjectRepository(SessionEntity)
     private readonly sessionRepository: Repository<SessionEntity>,
   ) {
-    super(sessionRepository);
+    super(sessionRepository, GetSessionRdo);
   }
 
   async saveSession(
     userData: CreateSession,
+    sessionInfo: SessionInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string } | null> {
     const session = await this.sessionRepository.save({
       userUUID: userData.UUID,
+      agent: sessionInfo.agent,
+      ip: sessionInfo.ip,
       expireAt: new Date(Date.now() + jwtSettings.refreshExpire.ms()),
     });
 

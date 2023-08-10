@@ -17,6 +17,7 @@ import { StorageService } from '@/storage/storage.service';
 import { CreateSession } from '@/common/types/createSession';
 import { TokenService } from '@/token/token.service';
 import { UserPayload } from '@/user/userPayload';
+import { SessionInfo } from '@/session/session-info';
 import { isEmail } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 
@@ -33,6 +34,7 @@ export class AuthService {
 
   async registration(
     createUserDto: CreateUserDto,
+    sessionInfo: SessionInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const user =
       (await this.userService.findOne({
@@ -67,7 +69,10 @@ export class AuthService {
 
     await this.mailService.sendVerifyEmail(createUserDto.email, link);
     this.storageService.createDefaultStorage(userEntity);
-    const sessionData = await this.sessionService.saveSession(payload);
+    const sessionData = await this.sessionService.saveSession(
+      payload,
+      sessionInfo,
+    );
     return {
       userRdo: sessionData.userRdo,
       refreshToken: sessionData.refreshToken,
@@ -76,6 +81,7 @@ export class AuthService {
 
   async login(
     userData: LoginDto,
+    sessionInfo: SessionInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const user = isEmail(userData.login)
       ? await this.userService.findOne({ where: { email: userData.login } })
@@ -104,7 +110,10 @@ export class AuthService {
       email: user.email,
       username: user.username,
     };
-    const sessionData = await this.sessionService.saveSession(payload);
+    const sessionData = await this.sessionService.saveSession(
+      payload,
+      sessionInfo,
+    );
 
     return {
       userRdo: sessionData.userRdo,
@@ -147,6 +156,7 @@ export class AuthService {
 
   async refresh(
     refreshToken: string,
+    sessionInfo: SessionInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const userData = await this.tokenService.validateToken<UserPayload>(
       refreshToken,
@@ -183,6 +193,6 @@ export class AuthService {
       where: { sessionUUID: session.sessionUUID },
     });
 
-    return await this.sessionService.saveSession(userPayload);
+    return await this.sessionService.saveSession(userPayload, sessionInfo);
   }
 }

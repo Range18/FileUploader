@@ -50,7 +50,7 @@ export abstract class BaseEntityService<
   ) {}
   async find(options: FindManyOptions<Entity>): Promise<Entity[]> {
     if (Object.values(options.where).includes(undefined)) {
-      throw new Error('Properties in options.where must be defined');
+      throw new Error('Properties in the options.where must be defined');
     }
 
     return await this.entityRepository.find(options);
@@ -58,7 +58,7 @@ export abstract class BaseEntityService<
 
   async findOne(options: FindOneOptions<Entity>): Promise<Entity> {
     if (Object.values(options.where).includes(undefined)) {
-      throw new Error('Properties in options.where must be defined');
+      throw new Error('Properties in the options.where must be defined');
     }
 
     return await this.entityRepository.findOne(options);
