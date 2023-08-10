@@ -22,8 +22,7 @@ export class MailService {
         html: mailDto.message,
       })
       .catch((err) => {
-        console.log(err);
-        throw new BadRequestException(err, { cause: err });
+        throw new BadRequestException(err['code'], { cause: err['response'] });
       });
   }
 

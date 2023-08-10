@@ -22,6 +22,7 @@ import { PermissionEntity } from '@/permissions/entities/permissions.entity';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
 import { Roles } from '@/permissions/roles.constant';
+import { BaseEntityService } from '@/common/base-entity.service';
 import { uid } from 'uid';
 import { Request } from 'express';
 import { diskStorage } from 'multer';
@@ -31,7 +32,10 @@ import { extname, join, normalize } from 'path';
 import { createReadStream } from 'fs';
 
 @Injectable()
-export class StorageService {
+export class StorageService extends BaseEntityService<
+  FileSystemEntity,
+  FileRdo
+> {
   static readonly multerOptions = {
     storage: diskStorage({
       destination: async (
@@ -88,7 +92,9 @@ export class StorageService {
     private readonly userService: UserService,
     private readonly fsService: FsService,
     private readonly permissionsService: PermissionsService,
-  ) {}
+  ) {
+    super(filesRepository, FileRdo);
+  }
   async saveFileSystemEntity(
     file: Express.Multer.File,
     destination: string,
@@ -96,6 +102,7 @@ export class StorageService {
     isFolder: boolean,
   ): Promise<void> {
     const userEntity = await this.userService.findByUUID(user.UUID);
+
     if (!userEntity) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
@@ -103,6 +110,7 @@ export class StorageService {
         UserExceptions.UserNotFound,
       );
     }
+
     if (isFolder) {
       const unzipToDir = `${file.destination}`;
       await this.fsService
@@ -117,6 +125,7 @@ export class StorageService {
         });
       return;
     }
+
     await this.filesRepository.save({
       owner: user,
       originalName: file.originalname,
@@ -533,7 +542,7 @@ export class StorageService {
         if (!fileEntity) {
           const index = permissionEntities.indexOf(permissionEntity);
           permissionEntities.splice(index, 1);
-          await this.permissionsService.remove(permissionEntity);
+          await this.permissionsService.removeOne(permissionEntity);
         }
 
         return {

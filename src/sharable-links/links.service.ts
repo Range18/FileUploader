@@ -10,18 +10,21 @@ import { FileExceptions } from '@/common/Exceptions/ExceptionTypes/FileException
 import { StorageService } from '@/storage/storage.service';
 import { MailService } from '@/mail/mail.service';
 import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
+import { BaseEntityService } from '@/common/base-entity.service';
 import ms from 'ms';
 import { Repository } from 'typeorm';
 
 @Injectable()
-export class LinksService {
+export class LinksService extends BaseEntityService<LinkEntity> {
   constructor(
     @InjectRepository(LinkEntity)
     private readonly linkRepository: Repository<LinkEntity>,
     private readonly storageService: StorageService,
     private readonly permissionsService: PermissionsService,
     private readonly mailService: MailService,
-  ) {}
+  ) {
+    super(linkRepository);
+  }
 
   async createLink(userUUID: string, createLinkDto: CreateLinkDto) {
     const fsEntity = await this.storageService.getFileSystemEntity({
@@ -40,7 +43,6 @@ export class LinksService {
       userShared: userUUID,
       name: fsEntity.name,
       setRoles: createLinkDto.roles,
-      isPrivate: createLinkDto.isPrivate,
       userToShare: createLinkDto.userToShare,
       usesLimit: createLinkDto.usesLimit,
       permsExpireAt: createLinkDto.permsExpireIn
@@ -58,10 +60,6 @@ export class LinksService {
       );
     }
     return linkEntity;
-  }
-
-  async getLinkEntityByUUID(uuid: string): Promise<LinkEntity> {
-    return await this.linkRepository.findOne({ where: { link: uuid } });
   }
 
   async updateLink(uuid: string, user: UserPayload) {
@@ -114,7 +112,7 @@ export class LinksService {
       if (linkEntity.usesLimit > 0) {
         linkEntity.usesLimit -= 1;
       } else {
-        await this.removeLink(linkEntity);
+        await this.removeOne(linkEntity);
 
         throw new ApiException(
           HttpStatus.FORBIDDEN,
@@ -125,25 +123,9 @@ export class LinksService {
     }
 
     if (linkEntity.usesLimit === 0) {
-      await this.removeLink(linkEntity);
+      await this.removeOne(linkEntity);
     } else {
       await this.linkRepository.save(linkEntity);
-    }
-
-    if (linkEntity.isPrivate) {
-      const permissionOfUser = await this.permissionsService.findOne({
-        where: { userUUID: user.UUID },
-      });
-
-      if (!permissionOfUser) {
-        await this.linkRepository.save(linkEntity);
-
-        throw new ApiException(
-          HttpStatus.FORBIDDEN,
-          'FileExceptions',
-          FileExceptions.AccessFail,
-        );
-      }
     }
 
     if (linkEntity.userToShare && user.email !== linkEntity.userToShare) {
@@ -153,7 +135,6 @@ export class LinksService {
         FileExceptions.AccessFail,
       );
     }
-
     await this.permissionsService.setPermission({
       userUUID: user.UUID,
       driveUUID: fsEntity.owner.UUID,
@@ -162,9 +143,5 @@ export class LinksService {
       permsExpireAt: linkEntity.permsExpireAt,
       linkExpireAt: linkEntity.permsExpireAt,
     });
-  }
-
-  async removeLink(linkEntity: LinkEntity) {
-    await this.linkRepository.remove(linkEntity);
   }
 }

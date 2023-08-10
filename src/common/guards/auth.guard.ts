@@ -28,6 +28,7 @@ export class AuthGuardClass implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request: Request = context.switchToHttp().getRequest<Request>();
     const accessToken = this.extractAuthorizationToken(request);
+
     if (!accessToken) {
       throw new ApiException(
         HttpStatus.UNAUTHORIZED,
@@ -52,8 +53,11 @@ export class AuthGuardClass implements CanActivate {
           TokenExceptions.InvalidAccessToken,
         );
       });
-    const sessionEntity: SessionEntity =
-      await this.sessionService.findOneByUUID(userPayload.sessionUUID);
+
+    const sessionEntity: SessionEntity = await this.sessionService.findOne({
+      where: { sessionUUID: userPayload.sessionUUID },
+    });
+
     if (!sessionEntity) {
       throw new ApiException(
         HttpStatus.UNAUTHORIZED,
@@ -61,6 +65,7 @@ export class AuthGuardClass implements CanActivate {
         SessionExceptions.SessionNotFound,
       );
     }
+
     request['user'] = { email: userPayload.email, UUID: userPayload.UUID };
     request['session'] = {
       UUID: sessionEntity.sessionUUID,

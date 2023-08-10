@@ -6,15 +6,18 @@ import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
 import { jwtSettings } from '@/common/configs/config';
 import { TokenService } from '@/token/token.service';
 import { CreateSession } from '@/common/types/createSession';
+import { BaseEntityService } from '@/common/base-entity.service';
 import { Repository } from 'typeorm';
 
 @Injectable()
-export class SessionService {
+export class SessionService extends BaseEntityService<SessionEntity> {
   constructor(
     private readonly tokenService: TokenService,
     @InjectRepository(SessionEntity)
     private readonly sessionRepository: Repository<SessionEntity>,
-  ) {}
+  ) {
+    super(sessionRepository);
+  }
 
   async saveSession(
     userData: CreateSession,
@@ -23,13 +26,16 @@ export class SessionService {
       userUUID: userData.UUID,
       expireAt: new Date(Date.now() + jwtSettings.refreshExpire.ms()),
     });
+
     const payload: UserPayload = {
       ...userData,
       sessionUUID: session.sessionUUID,
     };
+
     const accessToken = await this.tokenService.createToken(payload, {
       expiresIn: jwtSettings.accessExpire.value,
     });
+
     return {
       userRdo: {
         accessToken: accessToken,
@@ -40,17 +46,5 @@ export class SessionService {
         expiresIn: jwtSettings.refreshExpire.value,
       }),
     };
-  }
-
-  async findOneByUUID(sessionUUID: string): Promise<SessionEntity> {
-    return await this.sessionRepository.findOne({ where: { sessionUUID } });
-  }
-
-  async getUserFromToken(token: string): Promise<UserPayload | null> {
-    return await this.tokenService.validateToken(token);
-  }
-
-  async removeSession(sessionUUID: string) {
-    await this.sessionRepository.delete({ sessionUUID });
   }
 }

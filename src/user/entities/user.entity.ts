@@ -1,3 +1,4 @@
+import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 import {
   Column,
   CreateDateColumn,
@@ -6,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 
 @Entity('user')
 export class UserEntity {

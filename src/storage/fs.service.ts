@@ -4,6 +4,7 @@ import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
 import { FILE_NAMES_SIZE } from '@/storage/storage.constants';
 import { storageConfig } from '@/common/configs/storageConfig';
 import { isDevMode } from '@/common/configs/config';
+import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
 import * as yauzl from 'yauzl';
 import { Entry, ZipFile } from 'yauzl';
 import * as mime from 'mime';
@@ -14,7 +15,6 @@ import { mkdir, rename, stat, unlink } from 'fs/promises';
 import { extname, join, normalize } from 'path';
 import { createWriteStream } from 'fs';
 import { spawn } from 'child_process';
-import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
 
 @Injectable()
 export class FsService implements OnModuleInit {
@@ -150,7 +150,6 @@ export class FsService implements OnModuleInit {
                     originalName: entry.fileName.split('/').slice(-1).join(''),
                     name: filename,
                     destination: normalize(FolderDestination + dest),
-                    //TODO Why not default column value
                     type: mime.getType(join(unzipToDir, filepath)),
                     size: entry.uncompressedSize,
                   });

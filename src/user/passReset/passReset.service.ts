@@ -19,7 +19,7 @@ export class PassResetService {
   ) {}
 
   async createPassResetCode(email: string): Promise<PwdResetCodeEntity> {
-    const user = await this.userService.findOneByEmail(email);
+    const user = await this.userService.findOne({ where: { email } });
 
     if (!user) {
       throw new ApiException(
@@ -61,7 +61,7 @@ export class PassResetService {
     }
 
     user.password = await bcrypt.hash(newPassword, bcryptRounds);
-    await this.userService.saveUser(user);
+    await this.userService.createAndSave(user);
 
     await this.deletePassResetCode(code);
   }

@@ -20,6 +20,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
+
     const message =
       exception instanceof ApiException
         ? exception
@@ -39,7 +40,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
             },
           };
 
-    if (statusCode == HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (statusCode === HttpStatus.INTERNAL_SERVER_ERROR) {
       console.log(exception);
     }
 

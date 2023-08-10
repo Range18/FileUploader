@@ -1,4 +1,5 @@
 import { DEFAULT_FILE_NAME } from '@/storage/storage.constants';
+import { UserEntity } from '@/user/entities/user.entity';
 import {
   Column,
   CreateDateColumn,
@@ -8,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserEntity } from '@/user/entities/user.entity';
 
 @Entity('files')
 export class FileSystemEntity {

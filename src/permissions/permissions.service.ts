@@ -9,15 +9,18 @@ import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserException
 import { RolePerms } from '@/permissions/roles.constant';
 import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
 import { FileExceptions } from '@/common/Exceptions/ExceptionTypes/FileExceptions';
-import { FindManyOptions, FindOneOptions, Repository } from 'typeorm';
+import { BaseEntityService } from '@/common/base-entity.service';
+import { Repository } from 'typeorm';
 
 @Injectable()
-export class PermissionsService {
+export class PermissionsService extends BaseEntityService<PermissionEntity> {
   constructor(
     @InjectRepository(PermissionEntity)
     private readonly permissionsRepository: Repository<PermissionEntity>,
     private readonly userService: UserService,
-  ) {}
+  ) {
+    super(permissionsRepository);
+  }
 
   async setPermission(setPermsDto: SetPermsDto): Promise<PermissionEntity> {
     const permissionEntity = await this.permissionsRepository.findOne({
@@ -56,9 +59,11 @@ export class PermissionsService {
         name: getPermsDto.name,
       },
     });
+
     if (!permissionEntity) {
       return null;
     }
+
     if (permissionEntity.isTrashed) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
@@ -66,44 +71,24 @@ export class PermissionsService {
         FileExceptions.FileNotFound,
       );
     }
+
     if (
       permissionEntity.expireAt &&
       permissionEntity.expireAt < new Date(Date.now())
     ) {
-      await this.remove(permissionEntity);
+      await this.removeOne(permissionEntity);
       throw new ApiException(
         HttpStatus.FORBIDDEN,
         'OtherExceptions',
         OtherExceptions.PermissionExpired,
       );
     }
+
     return [permissionEntity.role];
   }
 
-  async save(
-    permissionEntities: PermissionEntity[],
-  ): Promise<PermissionEntity[]> {
-    return await this.permissionsRepository.save(permissionEntities);
-  }
-
-  async findOne(
-    options: FindOneOptions<PermissionEntity>,
-  ): Promise<PermissionEntity> {
-    return await this.permissionsRepository.findOne(options);
-  }
-
-  async find(
-    options: FindManyOptions<PermissionEntity>,
-  ): Promise<PermissionEntity[]> {
-    return await this.permissionsRepository.find(options);
-  }
-
-  async remove(permissionEntity: PermissionEntity) {
-    await this.permissionsRepository.remove(permissionEntity);
-  }
-
   async getAvailable(userUUID: string) {
-    const user = await this.userService.findOne('UUID', userUUID);
+    const user = await this.userService.findByUUID(userUUID);
 
     if (!user) {
       throw new ApiException(
@@ -131,7 +116,7 @@ export class PermissionsService {
         permissionEntity.expireAt &&
         permissionEntity.expireAt < new Date(Date.now())
       ) {
-        await this.remove(permissionEntity);
+        await this.removeOne(permissionEntity);
       }
     }
 

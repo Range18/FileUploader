@@ -25,9 +25,6 @@ export class LinkEntity {
   @Column({ nullable: false })
   setRoles: string;
 
-  @Column({ nullable: false, default: false })
-  isPrivate: boolean;
-
   @Column({ nullable: true, default: null })
   userToShare?: string;
 

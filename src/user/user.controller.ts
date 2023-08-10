@@ -71,7 +71,10 @@ export class UserController {
     userProperty: keyof GetUserRdo,
     @Query('value') propertyValue: string,
   ): Promise<GetUserRdo> {
-    const user = await this.userService.findOne(userProperty, propertyValue);
+    const user = await this.userService.findOne({
+      where: { [userProperty]: propertyValue },
+    });
+
     if (!user) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
@@ -79,10 +82,7 @@ export class UserController {
         UserExceptions.UserNotFound,
       );
     }
-    return {
-      username: user.username,
-      email: user.email,
-      UUID: user.UUID,
-    };
+
+    return this.userService.formatToDto(user);
   }
 }

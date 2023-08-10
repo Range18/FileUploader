@@ -2,9 +2,12 @@ import { StorageService } from './storage.service';
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
+  ParseBoolPipe,
   ParseFilePipe,
+  ParseUUIDPipe,
   Post,
   Query,
   Res,
@@ -17,13 +20,13 @@ import { UserPayload } from '@/user/userPayload';
 import { User } from '@/common/decorators/User.decorator';
 import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
 import { MakeDirDto } from '@/storage/dto/makeDir.dto';
-import { SetDefaultStorageQueryInterceptor } from '@/common/interceptors/setDefaultStorageQuery.interceptor';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
+import { Roles } from '@/permissions/roles.constant';
+import { SetStorageIdInterceptor } from '@/common/interceptors/set-storageid.interceptor';
 import { Response } from 'express';
 import { extname } from 'path';
-import { Roles } from '@/permissions/roles.constant';
 
 @Controller('drive')
 export class StorageController {
@@ -34,8 +37,8 @@ export class StorageController {
 
   //Create Data
   @UseInterceptors(FileInterceptor('file', StorageService.multerOptions))
-  @UseInterceptors(SetDefaultStorageQueryInterceptor)
   @RolesGuard('editor', 'owner')
+  @UseInterceptors(SetStorageIdInterceptor)
   @IsVerified()
   @AuthGuard()
   @Post('upload')
@@ -46,9 +49,11 @@ export class StorageController {
       }),
     )
     file: Express.Multer.File,
-    @Query('storageId') storageId: string,
-    @Query('path') path: string,
-    @Query('isFolder') isFolder: boolean,
+    @Query('storageId', new ParseUUIDPipe())
+    storageId: string,
+    @Query('path', new DefaultValuePipe('/')) path: string,
+    @Query('isFolder', new DefaultValuePipe(false), new ParseBoolPipe())
+    isFolder: boolean,
     @User() user: UserPayload,
   ) {
     await this.storageService.saveFileSystemEntity(
@@ -155,13 +160,14 @@ export class StorageController {
   }
 
   @RolesGuard('reader', 'editor', 'owner')
-  @UseInterceptors(SetDefaultStorageQueryInterceptor)
+  @UseInterceptors(SetStorageIdInterceptor)
   @IsVerified()
   @AuthGuard()
   @Get('get/dir')
   async getDirContent(
-    @Query('storageId') storageId: string,
-    @Query('path') path: string,
+    @Query('storageId', new ParseUUIDPipe())
+    storageId: string,
+    @Query('path', new DefaultValuePipe('/')) path: string,
   ): Promise<FileRdo[]> {
     return await this.storageService.getDirectoryContent(
       `${storageId}/${path}`,
@@ -172,7 +178,7 @@ export class StorageController {
   @IsVerified()
   @AuthGuard()
   @Delete('delete')
-  async deleteFile(@Query('filename') filename: string) {
+  async deleteFile(@Query('name') filename: string) {
     await this.storageService.deleteFile(filename);
   }
 

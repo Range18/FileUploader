@@ -15,6 +15,8 @@ import { AuthExceptions } from '@/common/Exceptions/ExceptionTypes/AuthException
 import { SessionExceptions } from '@/common/Exceptions/ExceptionTypes/SessionExceptions';
 import { StorageService } from '@/storage/storage.service';
 import { CreateSession } from '@/common/types/createSession';
+import { TokenService } from '@/token/token.service';
+import { UserPayload } from '@/user/userPayload';
 import { isEmail } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 
@@ -26,14 +28,20 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly verificationService: VerificationService,
     private readonly storageService: StorageService,
+    private readonly tokenService: TokenService,
   ) {}
 
   async registration(
     createUserDto: CreateUserDto,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const user =
-      (await this.userService.findOneByEmail(createUserDto.email)) ??
-      (await this.userService.findOneByUsername(createUserDto.username));
+      (await this.userService.findOne({
+        where: { email: createUserDto.email },
+      })) ??
+      (await this.userService.findOne({
+        where: { username: createUserDto.username },
+      }));
+
     if (user) {
       throw new ApiException(
         HttpStatus.CONFLICT,
@@ -46,7 +54,7 @@ export class AuthService {
       createUserDto.password,
       bcryptRounds,
     );
-    const userEntity = await this.userService.saveUser(createUserDto);
+    const userEntity = await this.userService.createAndSave(createUserDto);
     const payload: CreateSession = {
       UUID: userEntity.UUID,
       email: userEntity.email,
@@ -57,7 +65,7 @@ export class AuthService {
       (await this.verificationService.createCode(userEntity.UUID)).code
     }`;
 
-    this.mailService.sendVerifyEmail(createUserDto.email, link);
+    await this.mailService.sendVerifyEmail(createUserDto.email, link);
     this.storageService.createDefaultStorage(userEntity);
     const sessionData = await this.sessionService.saveSession(payload);
     return {
@@ -70,8 +78,8 @@ export class AuthService {
     userData: LoginDto,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const user = isEmail(userData.login)
-      ? await this.userService.findOneByEmail(userData.login)
-      : await this.userService.findOneByUsername(userData.login);
+      ? await this.userService.findOne({ where: { email: userData.login } })
+      : await this.userService.findOne({ where: { username: userData.login } });
     if (!user) {
       throw new ApiException(
         HttpStatus.NOT_FOUND,
@@ -105,8 +113,12 @@ export class AuthService {
   }
 
   async logout(refreshToken: string) {
-    const token = await this.sessionService.getUserFromToken(refreshToken);
-    await this.sessionService.removeSession(token.sessionUUID);
+    const token = await this.tokenService.validateToken<UserPayload>(
+      refreshToken,
+    );
+    await this.sessionService.removeOne({
+      where: { sessionUUID: token.sessionUUID },
+    });
   }
 
   async verify(code: string) {
@@ -129,18 +141,21 @@ export class AuthService {
     }
 
     user.isVerified = true;
-    await this.userService.saveUser(user);
+    await this.userService.createAndSave(user);
     await this.verificationService.deleteCode(code);
   }
 
   async refresh(
     refreshToken: string,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
-    const userData = await this.sessionService.getUserFromToken(refreshToken);
-
-    const session = await this.sessionService.findOneByUUID(
-      userData.sessionUUID,
+    const userData = await this.tokenService.validateToken<UserPayload>(
+      refreshToken,
     );
+
+    const session = await this.sessionService.findOne({
+      where: { sessionUUID: userData.sessionUUID },
+    });
+
     if (!session) {
       throw new ApiException(
         HttpStatus.UNAUTHORIZED,
@@ -148,6 +163,7 @@ export class AuthService {
         SessionExceptions.SessionNotFound,
       );
     }
+
     const user = await this.userService.findByUUID(userData.UUID);
 
     if (!user) {
@@ -157,13 +173,16 @@ export class AuthService {
         UserExceptions.UserNotFound,
       );
     }
+
     const userPayload: CreateSession = {
       UUID: user.UUID,
       email: user.email,
       username: user.username,
     };
-    const newSession = await this.sessionService.saveSession(userPayload);
-    await this.sessionService.removeSession(session.sessionUUID);
-    return newSession;
+    await this.sessionService.removeOne({
+      where: { sessionUUID: session.sessionUUID },
+    });
+
+    return await this.sessionService.saveSession(userPayload);
   }
 }
