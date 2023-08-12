@@ -47,6 +47,7 @@ export class AuthGuardClass implements CanActivate {
             TokenExceptions.AccessTokenExpired,
           );
         }
+
         throw new ApiException(
           HttpStatus.UNAUTHORIZED,
           'TokenExceptions',
@@ -69,7 +70,10 @@ export class AuthGuardClass implements CanActivate {
     request['user'] = { email: userPayload.email, UUID: userPayload.UUID };
     request['session'] = {
       UUID: sessionEntity.sessionUUID,
+      ip: sessionEntity.ip,
+      userAgent: sessionEntity.agent,
       expireAt: sessionEntity.expireAt,
+      createdAt: sessionEntity.createdAt,
     };
     return true;
   }

@@ -14,10 +14,10 @@ import { TokenExceptions } from '@/common/Exceptions/ExceptionTypes/TokenExcepti
 import { AuthExceptions } from '@/common/Exceptions/ExceptionTypes/AuthExceptions';
 import { SessionExceptions } from '@/common/Exceptions/ExceptionTypes/SessionExceptions';
 import { StorageService } from '@/storage/storage.service';
-import { CreateSession } from '@/common/types/createSession';
+import { CreateSession } from '@/session/createSession';
 import { TokenService } from '@/token/token.service';
 import { UserPayload } from '@/user/userPayload';
-import { SessionInfo } from '@/session/session-info';
+import { BrowserInfo } from '@/session/browser-info';
 import { isEmail } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 
@@ -34,7 +34,7 @@ export class AuthService {
 
   async registration(
     createUserDto: CreateUserDto,
-    sessionInfo: SessionInfo,
+    sessionInfo: BrowserInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const user =
       (await this.userService.findOne({
@@ -56,7 +56,9 @@ export class AuthService {
       createUserDto.password,
       bcryptRounds,
     );
+
     const userEntity = await this.userService.createAndSave(createUserDto);
+
     const payload: CreateSession = {
       UUID: userEntity.UUID,
       email: userEntity.email,
@@ -69,10 +71,12 @@ export class AuthService {
 
     await this.mailService.sendVerifyEmail(createUserDto.email, link);
     this.storageService.createDefaultStorage(userEntity);
+
     const sessionData = await this.sessionService.saveSession(
       payload,
       sessionInfo,
     );
+
     return {
       userRdo: sessionData.userRdo,
       refreshToken: sessionData.refreshToken,
@@ -81,7 +85,7 @@ export class AuthService {
 
   async login(
     userData: LoginDto,
-    sessionInfo: SessionInfo,
+    sessionInfo: BrowserInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const user = isEmail(userData.login)
       ? await this.userService.findOne({ where: { email: userData.login } })
@@ -156,7 +160,7 @@ export class AuthService {
 
   async refresh(
     refreshToken: string,
-    sessionInfo: SessionInfo,
+    sessionInfo: BrowserInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
     const userData = await this.tokenService.validateToken<UserPayload>(
       refreshToken,

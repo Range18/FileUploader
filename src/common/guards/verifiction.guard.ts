@@ -9,16 +9,20 @@ import {
 import { UserPayload } from '@/user/userPayload';
 import { UserService } from '@/user/user.service';
 import { UserEntity } from '@/user/entities/user.entity';
+import { Request } from 'express';
 
 @Injectable()
 export class VerificationGuard implements CanActivate {
   constructor(private readonly userService: UserService) {}
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
+
     const userPayload: UserPayload = request['user'];
+
     const user: UserEntity = await this.userService.findByUUID(
       userPayload.UUID,
     );
+
     if (!user.isVerified) {
       throw new ApiException(
         HttpStatus.FORBIDDEN,
@@ -26,6 +30,7 @@ export class VerificationGuard implements CanActivate {
         UserExceptions.NotVerified,
       );
     }
+
     return true;
   }
 }

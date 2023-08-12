@@ -5,10 +5,10 @@ import { UserPayload } from '@/user/userPayload';
 import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
 import { jwtSettings } from '@/common/configs/config';
 import { TokenService } from '@/token/token.service';
-import { CreateSession } from '@/common/types/createSession';
+import { CreateSession } from '@/session/createSession';
 import { BaseEntityService } from '@/common/base-entity.service';
 import { GetSessionRdo } from '@/session/get-session.rdo';
-import { SessionInfo } from '@/session/session-info';
+import { BrowserInfo } from '@/session/browser-info';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -26,7 +26,7 @@ export class SessionService extends BaseEntityService<
 
   async saveSession(
     userData: CreateSession,
-    sessionInfo: SessionInfo,
+    sessionInfo: BrowserInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string } | null> {
     const session = await this.sessionRepository.save({
       userUUID: userData.UUID,

@@ -20,7 +20,7 @@ export class CreateLinkDto {
 
   @IsEmail()
   @IsString()
-  @InCompatibleWith(['usesLimit'])
+  @InCompatibleWith(['usesLimit', 'expireIn'])
   @IsOptional()
   userToShare?: string;
 

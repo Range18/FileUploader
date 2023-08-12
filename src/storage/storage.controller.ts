@@ -16,7 +16,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
-import { UserPayload } from '@/user/userPayload';
 import { User } from '@/common/decorators/User.decorator';
 import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
 import { MakeDirDto } from '@/storage/dto/makeDir.dto';
@@ -25,6 +24,7 @@ import { FileRdo } from '@/storage/rdo/file.rdo';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
 import { Roles } from '@/permissions/roles.constant';
 import { SetStorageIdInterceptor } from '@/common/interceptors/set-storageid.interceptor';
+import { InterceptedUserData } from '@/user/intercepted-userData';
 import { Response } from 'express';
 import { extname } from 'path';
 
@@ -54,7 +54,7 @@ export class StorageController {
     @Query('path', new DefaultValuePipe('/')) path: string,
     @Query('isFolder', new DefaultValuePipe(false), new ParseBoolPipe())
     isFolder: boolean,
-    @User() user: UserPayload,
+    @User() user: InterceptedUserData,
   ) {
     await this.storageService.saveFileSystemEntity(
       file,
@@ -68,7 +68,10 @@ export class StorageController {
   @IsVerified()
   @AuthGuard()
   @Post('mkdir')
-  async mkDir(@Body() makeDirDto: MakeDirDto, @User() user: UserPayload) {
+  async mkDir(
+    @Body() makeDirDto: MakeDirDto,
+    @User() user: InterceptedUserData,
+  ) {
     await this.storageService.mkDir(
       makeDirDto.storageId ?? user.UUID,
       makeDirDto.path,
@@ -185,7 +188,7 @@ export class StorageController {
   @Get('get/shared/')
   @IsVerified()
   @AuthGuard()
-  async getObjUserAllowed(@User() user: UserPayload) {
+  async getObjUserAllowed(@User() user: InterceptedUserData) {
     const permissionEntities = await this.permissionsService.getAvailable(
       user.UUID,
     );
@@ -198,7 +201,7 @@ export class StorageController {
   @Get('download/data')
   async downloadUserData(
     @Res({ passthrough: true }) res: Response,
-    @User() user: UserPayload,
+    @User() user: InterceptedUserData,
   ) {
     const { buffer } = await this.storageService.downloadPersonalData(
       user.UUID,

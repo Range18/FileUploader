@@ -1,9 +1,9 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { SessionInfo } from '@/session/session-info';
+import { BrowserInfo } from '@/session/browser-info';
 import { Request } from 'express';
 
-export const ReqMetadata = createParamDecorator(
-  (data: unknown, context: ExecutionContext): SessionInfo => {
+export const UserMetadata = createParamDecorator(
+  (data: unknown, context: ExecutionContext): BrowserInfo => {
     const req: Request = context.switchToHttp().getRequest<Request>();
 
     return { ip: req.ip, agent: req.get('user-agent') };

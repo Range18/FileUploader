@@ -9,6 +9,8 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { StorageService } from '@/storage/storage.service';
+import { ROLES_METADATA_KEY } from '@/common/constants';
+import { Request } from 'express';
 
 @Injectable()
 export class RolesGuardClass implements CanActivate {
@@ -20,21 +22,30 @@ export class RolesGuardClass implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredRoles: string[] = this.reflector.getAllAndOverride<string[]>(
-      'roles',
+      ROLES_METADATA_KEY,
       [context.getHandler(), context.getClass()],
     );
+
     if (!requiredRoles) {
       return true;
     }
+
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
     //Guard behavior if request is bounded with storage managing
     const controller = context.getClass().name;
 
-    if (controller == 'StorageController') {
+    if (controller === 'StorageController') {
       const name: string = request.query['name'] as string;
-      if (!name) {
+      const storageId: string = request.query['storageId'] as string;
+
+      //TODO methods with storageId
+
+      if (!name && !storageId) {
+        user.roles = ['owner'];
+        request['user'] = user;
+
         return true;
       }
 
@@ -57,7 +68,7 @@ export class RolesGuardClass implements CanActivate {
           );
         }
 
-        user.roles = fileSystemEntity.owner === user.UUID ? 'owner' : [];
+        user.roles = fileSystemEntity.owner === user.UUID ? ['owner'] : [];
       }
 
       const isAvailable = requiredRoles.some((role) =>
@@ -71,6 +82,8 @@ export class RolesGuardClass implements CanActivate {
           FileExceptions.AccessFail,
         );
       }
+
+      request['user'] = user;
 
       return isAvailable;
     }

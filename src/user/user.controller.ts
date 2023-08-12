@@ -1,5 +1,4 @@
 import { UserService } from './user.service';
-import { UserPayload } from './userPayload';
 import { GetUserRdo } from './rdo/get-user.rdo';
 import { Body, Controller, Get, HttpStatus, Put, Query } from '@nestjs/common';
 import { ApiException } from '@/common/Exceptions/ApiException';
@@ -11,6 +10,7 @@ import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
 import { MailService } from '@/mail/mail.service';
 import { apiServer } from '@/common/configs/config';
 import { VerificationService } from '@/auth/verification/verification.service';
+import { InterceptedUserData } from '@/user/intercepted-userData';
 
 @Controller('user')
 export class UserController {
@@ -24,7 +24,7 @@ export class UserController {
   @AuthGuard()
   @Put('change/password/')
   async changePassword(
-    @User() user: UserPayload,
+    @User() user: InterceptedUserData,
     @Body('password') password: string,
     @Body('newPassword') newPassword: string,
   ) {
@@ -36,7 +36,7 @@ export class UserController {
   @Put('change/username')
   async changeUsername(
     @Body('newUsername') newUsername: string,
-    @User() user: UserPayload,
+    @User() user: InterceptedUserData,
   ) {
     await this.userService.changeUsername(user.UUID, newUsername);
   }
@@ -45,7 +45,7 @@ export class UserController {
   @AuthGuard()
   async changeEmail(
     @Body('newEmail') newEmail: string,
-    @User() user: UserPayload,
+    @User() user: InterceptedUserData,
   ) {
     await this.userService.changeEmail({
       property: user.email,

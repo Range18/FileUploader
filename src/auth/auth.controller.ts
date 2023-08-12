@@ -14,8 +14,10 @@ import { CreateUserDto } from '@/user/dto/create-user.dto';
 import { LoggedUserRdo } from '@/user/rdo/logged-user.rdo';
 import { Cookies } from '@/common/decorators/cookies.decorator';
 import { frontendServer, jwtSettings } from '@/common/configs/config';
-import { ReqMetadata } from '@/common/decorators/ReqMetadata.decorator';
-import { SessionInfo } from '@/session/session-info';
+import { UserMetadata } from '@/common/decorators/user-metadata.decorator';
+import { BrowserInfo } from '@/session/browser-info';
+import { Session } from '@/common/decorators/session.decorator';
+import { UserSession } from '@/session/user-session';
 import { Response } from 'express';
 
 @Controller('auth')
@@ -26,7 +28,7 @@ export class AuthController {
   async registration(
     @Body() user: CreateUserDto,
     @Res({ passthrough: true }) res: Response,
-    @ReqMetadata() sessionInfo: SessionInfo,
+    @UserMetadata() sessionInfo: BrowserInfo,
   ): Promise<LoggedUserRdo> {
     const { userRdo, refreshToken } = await this.authService.registration(
       user,
@@ -43,7 +45,7 @@ export class AuthController {
   async login(
     @Body() user: LoginDto,
     @Res({ passthrough: true }) res: Response,
-    @ReqMetadata() sessionInfo: SessionInfo,
+    @UserMetadata() sessionInfo: BrowserInfo,
   ): Promise<LoggedUserRdo> {
     const { userRdo, refreshToken } = await this.authService.login(
       user,
@@ -75,16 +77,18 @@ export class AuthController {
   async refresh(
     @Cookies('refreshToken') OldRefreshToken: string,
     @Res({ passthrough: true }) res: Response,
-    @ReqMetadata() sessionInfo: SessionInfo,
+    @UserMetadata() sessionInfo: BrowserInfo,
   ): Promise<LoggedUserRdo | null> {
     const { userRdo, refreshToken } = await this.authService.refresh(
       OldRefreshToken,
       sessionInfo,
     );
+
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       expires: new Date(Date.now() + jwtSettings.refreshExpire.ms()),
     });
+
     return userRdo;
   }
 }

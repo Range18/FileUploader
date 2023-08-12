@@ -8,6 +8,7 @@ import { frontendServer } from '@/common/configs/config';
 import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
 import { CreateLinkRdo } from '@/sharable-links/dto/create-link.rdo';
+import { InterceptedUserData } from '@/user/intercepted-userData';
 
 @Controller('drive')
 export class LinksController {
@@ -20,7 +21,7 @@ export class LinksController {
   async createLink(
     @Body()
     body: CreateLinkDto,
-    @User() user: UserPayload,
+    @User() user: InterceptedUserData,
   ): Promise<CreateLinkRdo> {
     const { userToShare, link } = await this.linksService.createLink(
       user.UUID,
@@ -35,7 +36,10 @@ export class LinksController {
   @IsVerified()
   @AuthGuard()
   @Post('set/permissions/:code')
-  async getFile(@Param('code') code: string, @User() user: UserPayload) {
+  async getFile(
+    @Param('code') code: string,
+    @User() user: InterceptedUserData,
+  ) {
     await this.linksService.updateLink(code, user);
   }
 }
