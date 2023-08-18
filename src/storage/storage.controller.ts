@@ -17,14 +17,15 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { User } from '@/common/decorators/User.decorator';
-import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
+import { PermissionGuard } from '@/common/decorators/permission-guard.decorator';
 import { MakeDirDto } from '@/storage/dto/makeDir.dto';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
-import { Roles } from '@/permissions/roles.constant';
 import { SetStorageIdInterceptor } from '@/common/interceptors/set-storageid.interceptor';
 import { InterceptedUserData } from '@/user/intercepted-userData';
+import { Permissions } from '@/permissions/permissions.constant';
+import { RolePerms, Roles } from '@/permissions/roles.constant';
 import { Response } from 'express';
 import { extname } from 'path';
 
@@ -37,7 +38,7 @@ export class StorageController {
 
   //Create Data
   @UseInterceptors(FileInterceptor('file', StorageService.multerOptions))
-  @RolesGuard('editor', 'owner')
+  @PermissionGuard(Permissions.Read, Permissions.Write)
   @UseInterceptors(SetStorageIdInterceptor)
   @IsVerified()
   @AuthGuard()
@@ -64,7 +65,7 @@ export class StorageController {
     );
   }
 
-  @RolesGuard('editor', 'owner')
+  @PermissionGuard(Permissions.Read, Permissions.Create)
   @IsVerified()
   @AuthGuard()
   @Post('mkdir')
@@ -80,7 +81,7 @@ export class StorageController {
   }
 
   //Fetch Data
-  @RolesGuard('reader', 'editor', 'owner')
+  @PermissionGuard(Permissions.Read)
   @IsVerified()
   @AuthGuard()
   @Get('get')
@@ -107,7 +108,7 @@ export class StorageController {
     return buffer;
   }
 
-  @RolesGuard('reader', 'editor', 'owner')
+  @PermissionGuard(Permissions.Read)
   @IsVerified()
   @AuthGuard()
   @Get('get/info')
@@ -131,11 +132,16 @@ export class StorageController {
       createdAt: fileEntity.createdAt,
       updatedAt: fileEntity.updatedAt,
       extname: extname(fileEntity.name),
-      role: permsEntity ? <Roles>permsEntity.role : 'owner',
+      role: permsEntity
+        ? <Roles>RolePerms[permsEntity.permissions] ?? 'custom'
+        : 'owner',
+      permissions: permsEntity
+        ? await this.permissionsService.getPermsAsStr(permsEntity.permissions)
+        : await this.permissionsService.getPermsAsStr('owner'),
     };
   }
 
-  @RolesGuard('editor', 'owner')
+  @PermissionGuard(Permissions.Trash)
   @IsVerified()
   @AuthGuard()
   @Delete('trash')
@@ -143,7 +149,7 @@ export class StorageController {
     return await this.storageService.trashFile(filename);
   }
 
-  @RolesGuard('editor', 'owner')
+  @PermissionGuard('owner')
   @IsVerified()
   @AuthGuard()
   @Post('recover')
@@ -151,7 +157,7 @@ export class StorageController {
     return await this.storageService.unTrashFile(filename);
   }
 
-  @RolesGuard('editor', 'owner')
+  @PermissionGuard(Permissions.Read, Permissions.Write)
   @IsVerified()
   @AuthGuard()
   @Post('move')
@@ -162,7 +168,7 @@ export class StorageController {
     return await this.storageService.moveFile(filename, 'move', newPath);
   }
 
-  @RolesGuard('reader', 'editor', 'owner')
+  @PermissionGuard(Permissions.Read)
   @UseInterceptors(SetStorageIdInterceptor)
   @IsVerified()
   @AuthGuard()
@@ -177,7 +183,7 @@ export class StorageController {
     );
   }
 
-  @RolesGuard('owner')
+  @PermissionGuard('owner')
   @IsVerified()
   @AuthGuard()
   @Delete('delete')
@@ -195,7 +201,7 @@ export class StorageController {
     return this.storageService.formatPermEntities(permissionEntities);
   }
 
-  @RolesGuard('owner')
+  @PermissionGuard('owner')
   @IsVerified()
   @AuthGuard()
   @Get('download/data')

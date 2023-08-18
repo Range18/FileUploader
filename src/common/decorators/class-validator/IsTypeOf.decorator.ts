@@ -1,6 +1,10 @@
+import { Permissions } from '@/permissions/permissions.constant';
 import { registerDecorator, ValidationOptions } from 'class-validator';
 
-export function IsTypeOf(type: string, validationOptions?: ValidationOptions) {
+export function IsTypeOf(
+  type: string | 'StringValue' | 'PermissionsAsStr',
+  validationOptions?: ValidationOptions,
+) {
   return function (object: NonNullable<unknown>, propertyName: string) {
     registerDecorator({
       name: 'IsType',
@@ -59,6 +63,10 @@ export function IsTypeOf(type: string, validationOptions?: ValidationOptions) {
                 return true;
               }
             }
+          } else if (type === 'PermissionsAsStr') {
+            if (Array.isArray(value)) {
+              return value.every((perm) => !!Permissions[perm]);
+            } else return !!Permissions[value];
           }
 
           return typeof value === type;

@@ -21,8 +21,8 @@ import {
 import { PermissionEntity } from '@/permissions/entities/permissions.entity';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
-import { Roles } from '@/permissions/roles.constant';
 import { BaseEntityService } from '@/common/base-entity.service';
+import { RolePerms, Roles } from '@/permissions/roles.constant';
 import { uid } from 'uid';
 import { Request } from 'express';
 import { diskStorage } from 'multer';
@@ -509,7 +509,7 @@ export class StorageService extends BaseEntityService<
         where: { name: dirContent[i] },
       });
 
-      const permsEntity = await this.permissionsService.findOne({
+      const permissionEntity = await this.permissionsService.findOne({
         where: { name: fileSystemEntity.name },
       });
 
@@ -520,7 +520,14 @@ export class StorageService extends BaseEntityService<
         originalName: fileSystemEntity.originalName,
         extname: extname(dirContent[i]),
         destination: fileSystemEntity.destination,
-        role: permsEntity ? <Roles>permsEntity.role : 'owner',
+        role: permissionEntity
+          ? <Roles>RolePerms[permissionEntity.permissions] ?? 'custom'
+          : 'owner',
+        permissions: permissionEntity
+          ? await this.permissionsService.getPermsAsStr(
+              permissionEntity.permissions,
+            )
+          : await this.permissionsService.getPermsAsStr('owner'),
         isTrashed: fileSystemEntity.isTrashed,
         size: fileSystemEntity.size,
         updatedAt: fileSystemEntity.updatedAt,
@@ -554,7 +561,10 @@ export class StorageService extends BaseEntityService<
           size: fileEntity.size,
           isTrashed: fileEntity.isTrashed,
           extname: extname(fileEntity.originalName),
-          role: <Roles>permissionEntity.role,
+          role: <Roles>RolePerms[permissionEntity.permissions] ?? 'custom',
+          permissions: await this.permissionsService.getPermsAsStr(
+            permissionEntity.permissions,
+          ),
           updatedAt: fileEntity.updatedAt,
           createdAt: fileEntity.createdAt,
         };

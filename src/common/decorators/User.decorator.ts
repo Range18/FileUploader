@@ -1,8 +1,8 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { InterceptedUserData } from '@/user/intercepted-userData';
 import { Roles } from '@/permissions/roles.constant';
-import { Request } from 'express';
 import { UserPayload } from '@/user/userPayload';
+import { Request } from 'express';
 
 export const User = createParamDecorator(
   (

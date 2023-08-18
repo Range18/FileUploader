@@ -8,3 +8,5 @@ export enum Permissions {
   Trash = 64,
   Share = 128,
 }
+
+export type PermissionsAsStr = keyof typeof Permissions;

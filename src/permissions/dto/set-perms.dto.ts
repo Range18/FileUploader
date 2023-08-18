@@ -15,7 +15,7 @@ export class SetPermsDto {
 
   @IsString()
   @IsNotEmpty()
-  role: string;
+  permissions: number;
 
   @IsDate()
   permsExpireAt?: Date;

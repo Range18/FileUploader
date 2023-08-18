@@ -3,9 +3,8 @@ import { CreateLinkDto } from './dto/create-link.dto';
 import { Body, Controller, Param, Post } from '@nestjs/common';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
 import { User } from '@/common/decorators/User.decorator';
-import { UserPayload } from '@/user/userPayload';
 import { frontendServer } from '@/common/configs/config';
-import { RolesGuard } from '@/common/decorators/rolesGuard.decorator';
+import { PermissionGuard } from '@/common/decorators/permission-guard.decorator';
 import { IsVerified } from '@/common/decorators/verifyGuard.decorator';
 import { CreateLinkRdo } from '@/sharable-links/dto/create-link.rdo';
 import { InterceptedUserData } from '@/user/intercepted-userData';
@@ -14,7 +13,7 @@ import { InterceptedUserData } from '@/user/intercepted-userData';
 export class LinksController {
   constructor(private readonly linksService: LinksService) {}
 
-  @RolesGuard('owner')
+  @PermissionGuard('owner')
   @IsVerified()
   @AuthGuard()
   @Post('share/space')

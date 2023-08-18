@@ -16,7 +16,7 @@ export class PermissionEntity {
   name: string;
 
   @Column({ nullable: false })
-  role: string;
+  permissions: number;
 
   @Column({ nullable: false, default: false })
   isTrashed: boolean;

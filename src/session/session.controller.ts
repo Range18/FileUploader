@@ -4,8 +4,8 @@ import { User } from '@/common/decorators/User.decorator';
 import { UserPayload } from '@/user/userPayload';
 import { GetSessionRdo } from '@/session/get-session.rdo';
 import { AuthGuard } from '@/common/decorators/authGuard.decorator';
-import { Not } from 'typeorm';
 import { InterceptedUserData } from '@/user/intercepted-userData';
+import { Not } from 'typeorm';
 
 @Controller('sessions')
 export class SessionController {

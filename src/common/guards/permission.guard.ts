@@ -9,11 +9,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { StorageService } from '@/storage/storage.service';
-import { ROLES_METADATA_KEY } from '@/common/constants';
-import { Request } from 'express';
+import { PERMS_METADATA_KEY } from '@/common/constants';
+import { Permissions } from '@/permissions/permissions.constant';
 
 @Injectable()
-export class RolesGuardClass implements CanActivate {
+export class PermissionGuardClass implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly permissionService: PermissionsService,
@@ -21,12 +21,12 @@ export class RolesGuardClass implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredRoles: string[] = this.reflector.getAllAndOverride<string[]>(
-      ROLES_METADATA_KEY,
+    const requiredPerms: string[] = this.reflector.getAllAndOverride<string[]>(
+      PERMS_METADATA_KEY,
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredRoles) {
+    if (!requiredPerms) {
       return true;
     }
 
@@ -43,18 +43,18 @@ export class RolesGuardClass implements CanActivate {
       //TODO methods with storageId
 
       if (!name && !storageId) {
-        user.roles = ['owner'];
+        user.permissions = await this.permissionService.getPermsAsStr('owner');
         request['user'] = user;
 
         return true;
       }
 
-      user.roles = await this.permissionService.getPermissions({
+      user.permissions = await this.permissionService.getPermissions({
         userUUID: user.UUID,
         name: name,
       });
 
-      if (!user.roles) {
+      if (!user.permissions) {
         const fileSystemEntity = await this.storageService.getFileSystemEntity({
           where: { name: name },
           loadRelationIds: { relations: ['owner'] },
@@ -68,11 +68,14 @@ export class RolesGuardClass implements CanActivate {
           );
         }
 
-        user.roles = fileSystemEntity.owner === user.UUID ? ['owner'] : [];
+        user.permissions =
+          fileSystemEntity.owner === user.UUID
+            ? await this.permissionService.getPermsAsStr('owner')
+            : [];
       }
 
-      const isAvailable = requiredRoles.some((role) =>
-        user.roles?.includes(role),
+      const isAvailable = requiredPerms.some((perm) =>
+        user.permissions?.includes(Permissions[perm]),
       );
 
       if (!isAvailable) {

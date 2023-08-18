@@ -42,7 +42,9 @@ export class LinksService extends BaseEntityService<LinkEntity> {
     const linkEntity = await this.linkRepository.save({
       userShared: userUUID,
       name: fsEntity.name,
-      setRoles: createLinkDto.roles,
+      setPerms: this.permissionsService.getPermsAsNumber(
+        createLinkDto.permissions,
+      ),
       userToShare: createLinkDto.userToShare,
       usesLimit: createLinkDto.usesLimit,
       permsExpireAt: createLinkDto.permsExpireIn
@@ -87,6 +89,7 @@ export class LinksService extends BaseEntityService<LinkEntity> {
 
     const fsEntity = await this.storageService.getFileSystemEntity({
       where: { name: linkEntity.name },
+      loadRelationIds: { relations: ['owner'] },
     });
 
     if (!fsEntity || fsEntity.isTrashed) {
@@ -135,11 +138,12 @@ export class LinksService extends BaseEntityService<LinkEntity> {
         FileExceptions.AccessFail,
       );
     }
+
     await this.permissionsService.setPermission({
       userUUID: user.UUID,
-      driveUUID: fsEntity.owner.UUID,
+      driveUUID: <string>(<unknown>fsEntity.owner),
       name: linkEntity.name,
-      role: linkEntity.setRoles,
+      permissions: linkEntity.setPerms,
       permsExpireAt: linkEntity.permsExpireAt,
       linkExpireAt: linkEntity.permsExpireAt,
     });

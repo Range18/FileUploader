@@ -1,25 +1,60 @@
 import { SetPermsDto } from './dto/set-perms.dto';
 import { PermissionEntity } from './entities/permissions.entity';
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { GetPermsDto } from '@/permissions/dto/get-perms.dto';
 import { UserService } from '@/user/user.service';
 import { ApiException } from '@/common/Exceptions/ApiException';
 import { UserExceptions } from '@/common/Exceptions/ExceptionTypes/UserExceptions';
-import { RolePerms } from '@/permissions/roles.constant';
+import { RolePerms, Roles } from '@/permissions/roles.constant';
 import { OtherExceptions } from '@/common/Exceptions/ExceptionTypes/OtherExceptions';
 import { FileExceptions } from '@/common/Exceptions/ExceptionTypes/FileExceptions';
 import { BaseEntityService } from '@/common/base-entity.service';
+import {
+  Permissions,
+  PermissionsAsStr,
+} from '@/permissions/permissions.constant';
+import { DefaultPermissionsEntity } from '@/permissions/entities/default-permissions.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
-export class PermissionsService extends BaseEntityService<PermissionEntity> {
+export class PermissionsService
+  extends BaseEntityService<PermissionEntity>
+  implements OnModuleInit
+{
   constructor(
     @InjectRepository(PermissionEntity)
     private readonly permissionsRepository: Repository<PermissionEntity>,
+    @InjectRepository(DefaultPermissionsEntity)
+    private readonly defaultPermsRepository: Repository<DefaultPermissionsEntity>,
     private readonly userService: UserService,
   ) {
     super(permissionsRepository);
+  }
+
+  async onModuleInit() {
+    for (const [perms, role] of Object.entries(RolePerms)) {
+      if (typeof role === 'number') break;
+
+      if (await this.defaultPermsRepository.findOne({ where: { name: role } }))
+        continue;
+
+      await this.defaultPermsRepository.save({
+        name: <string>role,
+        permissions: <number>(<unknown>perms),
+      });
+    }
+
+    if (
+      !(await this.defaultPermsRepository.findOne({
+        where: { name: 'custom' },
+      }))
+    ) {
+      await this.defaultPermsRepository.save({
+        name: 'custom',
+        permissions: null,
+      });
+    }
   }
 
   async setPermission(setPermsDto: SetPermsDto): Promise<PermissionEntity> {
@@ -32,8 +67,8 @@ export class PermissionsService extends BaseEntityService<PermissionEntity> {
     });
 
     if (permissionEntity) {
-      if (RolePerms[setPermsDto.role] > RolePerms[permissionEntity.role]) {
-        permissionEntity.role = setPermsDto.role;
+      if (setPermsDto.permissions > permissionEntity.permissions) {
+        permissionEntity.permissions = setPermsDto.permissions;
       }
 
       if (permissionEntity.expireAt && !setPermsDto.permsExpireAt) {
@@ -47,12 +82,14 @@ export class PermissionsService extends BaseEntityService<PermissionEntity> {
       userUUID: setPermsDto.userUUID,
       driveId: setPermsDto.driveUUID,
       name: setPermsDto.name,
-      role: setPermsDto.role,
+      permissions: setPermsDto.permissions,
       expireAt: setPermsDto.permsExpireAt,
     });
   }
 
-  async getPermissions(getPermsDto: GetPermsDto): Promise<string[] | null> {
+  async getPermissions(
+    getPermsDto: GetPermsDto,
+  ): Promise<PermissionsAsStr[] | null> {
     const permissionEntity = await this.permissionsRepository.findOne({
       where: {
         userUUID: getPermsDto.userUUID,
@@ -84,7 +121,7 @@ export class PermissionsService extends BaseEntityService<PermissionEntity> {
       );
     }
 
-    return [permissionEntity.role];
+    return this.getPermsAsStr(permissionEntity.permissions);
   }
 
   async getAvailable(userUUID: string) {
@@ -121,5 +158,36 @@ export class PermissionsService extends BaseEntityService<PermissionEntity> {
     }
 
     return objectsAvailable;
+  }
+
+  async getPermsAsStr(perms: Roles): Promise<PermissionsAsStr[]>;
+  async getPermsAsStr(perms: number): Promise<PermissionsAsStr[]>;
+  async getPermsAsStr(
+    permsOrRole: number | Roles,
+  ): Promise<PermissionsAsStr[]> {
+    const permissions: PermissionsAsStr[] = [];
+
+    const perms: number =
+      typeof permsOrRole === 'number'
+        ? permsOrRole
+        : (
+            await this.defaultPermsRepository.findOne({
+              where: { name: permsOrRole },
+            })
+          ).permissions;
+
+    for (const permission of Object.values(Permissions)) {
+      const IsHasPerm = perms & Permissions[permission];
+
+      if (IsHasPerm) {
+        permissions.push(<PermissionsAsStr>permission);
+      }
+    }
+
+    return permissions;
+  }
+
+  getPermsAsNumber(perms: PermissionsAsStr[]): number {
+    return perms.reduce((sum, perm) => sum + Permissions[perm], 0);
   }
 }

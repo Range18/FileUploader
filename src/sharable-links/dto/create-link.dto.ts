@@ -1,6 +1,8 @@
 import { IsTypeOf } from '@/common/decorators/class-validator/IsTypeOf.decorator';
 import { InCompatibleWith } from '@/common/decorators/class-validator/InCompatibleWith.decorator';
+import { PermissionsAsStr } from '@/permissions/permissions.constant';
 import {
+  IsArray,
   IsEmail,
   IsNotEmpty,
   IsNumber,
@@ -14,9 +16,10 @@ export class CreateLinkDto {
   @IsNotEmpty()
   name: string;
 
-  @IsString()
+  @IsTypeOf('PermissionsAsStr')
+  @IsArray()
   @IsNotEmpty()
-  roles: string;
+  permissions: PermissionsAsStr[];
 
   @IsEmail()
   @IsString()

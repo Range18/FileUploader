@@ -23,7 +23,7 @@ export class LinkEntity {
   link: string;
 
   @Column({ nullable: false })
-  setRoles: string;
+  setPerms: number;
 
   @Column({ nullable: true, default: null })
   userToShare?: string;

@@ -1,3 +1,4 @@
+import { PermissionsAsStr } from '@/permissions/permissions.constant';
 import { Roles } from '@/permissions/roles.constant';
 import { Expose } from 'class-transformer';
 
@@ -21,7 +22,10 @@ export class FileRdo {
   extname?: string;
 
   @Expose()
-  role?: Roles;
+  role: Roles | 'custom';
+
+  @Expose()
+  permissions?: PermissionsAsStr[];
 
   @Expose()
   size: number;

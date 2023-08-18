@@ -1,1 +1,1 @@
-export const ROLES_METADATA_KEY = 'roles';
+export const PERMS_METADATA_KEY = 'permissions';
