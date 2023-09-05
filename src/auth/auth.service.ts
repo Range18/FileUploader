@@ -162,6 +162,14 @@ export class AuthService {
     refreshToken: string,
     sessionInfo: BrowserInfo,
   ): Promise<{ userRdo: LoggedUserRdo; refreshToken: string }> {
+    if (!refreshToken) {
+      throw new ApiException(
+        HttpStatus.UNAUTHORIZED,
+        'AuthExceptions',
+        AuthExceptions.RefreshTokenRequired,
+      );
+    }
+
     const userData = await this.tokenService.validateToken<UserPayload>(
       refreshToken,
     );

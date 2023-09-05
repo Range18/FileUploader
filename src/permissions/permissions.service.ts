@@ -87,10 +87,8 @@ export class PermissionsService
     });
   }
 
-  async getPermissions(
-    getPermsDto: GetPermsDto,
-  ): Promise<PermissionsAsStr[] | null> {
-    const permissionEntity = await this.permissionsRepository.findOne({
+  async getPermissions(getPermsDto: GetPermsDto): Promise<PermissionsAsStr[]> {
+    const permissionEntity = await this.findOne({
       where: {
         userUUID: getPermsDto.userUUID,
         name: getPermsDto.name,
@@ -98,7 +96,7 @@ export class PermissionsService
     });
 
     if (!permissionEntity) {
-      return null;
+      return [];
     }
 
     if (permissionEntity.isTrashed) {

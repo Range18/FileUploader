@@ -10,7 +10,15 @@ import { Reflector } from '@nestjs/core';
 import { PermissionsService } from '@/permissions/permissions.service';
 import { StorageService } from '@/storage/storage.service';
 import { PERMS_METADATA_KEY } from '@/common/constants';
-import { Permissions } from '@/permissions/permissions.constant';
+import {
+  Permissions,
+  PermissionsAsStr,
+} from '@/permissions/permissions.constant';
+import { MoveFileDto } from '@/storage/dto/moveFile.dto';
+import { FileSystemEntity } from '@/storage/entities/fileSystemEntity';
+import { RootDirWithDriveId } from '@/storage/types/rootDir.type';
+import { ROOT_NAME, ROOT_PATH } from '@/storage/storage.constants';
+import { join, normalize } from 'path';
 
 @Injectable()
 export class PermissionGuardClass implements CanActivate {
@@ -37,28 +45,168 @@ export class PermissionGuardClass implements CanActivate {
     const controller = context.getClass().name;
 
     if (controller === 'StorageController') {
-      const name: string = request.query['name'] as string;
-      const storageId: string = request.query['storageId'] as string;
+      const name: string = request.query['name'] ?? request.body['name'];
+      const path: string = request.query['path'] ?? request.body['path'];
+      const storageId: string = request.params['id'] ?? user.UUID;
+      const method = context.getHandler().name;
 
-      //TODO methods with storageId
+      switch (method) {
+        case 'uploadFile':
+        case 'getDirContent':
+          const destination = join(storageId, path);
+          if (path === '/') {
+            user.permissions =
+              storageId === user.UUID
+                ? await this.permissionService.getPermsAsStr('owner')
+                : [];
 
-      if (!name && !storageId) {
-        user.permissions = await this.permissionService.getPermsAsStr('owner');
-        request['user'] = user;
+            break;
+          }
 
-        return true;
+          const fileSystemEntity = await this.storageService.findOne({
+            where: { destination },
+            loadRelationIds: { relations: ['owner'] },
+          });
+
+          if (!fileSystemEntity) {
+            throw new ApiException(
+              HttpStatus.NOT_FOUND,
+              'FileExceptions',
+              FileExceptions.FileNotFound,
+            );
+          }
+
+          user.permissions = await this.permissionService.getPermissions({
+            userUUID: user.UUID,
+            name: fileSystemEntity.name,
+          });
+          break;
+
+        case 'mkDir':
+          const whereToCreate = request.body['whereToCreate'];
+
+          if (
+            whereToCreate === ROOT_PATH ||
+            whereToCreate === ROOT_NAME ||
+            whereToCreate === user.UUID
+          ) {
+            user.permissions =
+              storageId === user.UUID
+                ? await this.permissionService.getPermsAsStr('owner')
+                : [];
+
+            break;
+          }
+
+          const createAtEntity = await this.storageService.findOne({
+            where: { name: whereToCreate },
+            loadRelationIds: { relations: ['owner'] },
+          });
+
+          if (!createAtEntity) {
+            throw new ApiException(
+              HttpStatus.NOT_FOUND,
+              'FileExceptions',
+              FileExceptions.FileNotFound,
+            );
+          }
+
+          user.permissions = await this.permissionService.getPermissions({
+            userUUID: user.UUID,
+            name: whereToCreate,
+          });
+
+          break;
+
+        case 'moveFile':
+          const moveFileDto: MoveFileDto = request.body;
+
+          const newDestEntity: FileSystemEntity | RootDirWithDriveId =
+            moveFileDto.dirname === 'root' || moveFileDto.dirname === '/'
+              ? {
+                  owner: storageId,
+                  name: 'root',
+                  destination: `${storageId}/`,
+                  isTrashed: false,
+                }
+              : await this.storageService.findOne({
+                  where: {
+                    name: moveFileDto.dirname,
+                    type: 'folder',
+                  },
+                  loadRelationIds: { relations: ['owner'] },
+                });
+
+          if (!newDestEntity) {
+            throw new ApiException(
+              HttpStatus.NOT_FOUND,
+              'FileExceptions',
+              FileExceptions.FileNotFound,
+            );
+          }
+
+          const newDestPerms: PermissionsAsStr[] =
+            (await this.permissionService.getPermissions({
+              userUUID: user.UUID,
+              name: newDestEntity.name,
+            })) ?? user.UUID === newDestEntity.owner
+              ? await this.permissionService.getPermsAsStr('owner')
+              : [];
+
+          let entityPerms: PermissionsAsStr[] =
+            await this.permissionService.getPermissions({
+              userUUID: user.UUID,
+              name: moveFileDto.filename,
+            });
+
+          if (!entityPerms) {
+            const fileEntity = await this.storageService.findOne({
+              where: { name: moveFileDto.filename },
+              loadRelationIds: { relations: ['owner'] },
+            });
+
+            if (!fileEntity) {
+              throw new ApiException(
+                HttpStatus.NOT_FOUND,
+                'FileExceptions',
+                FileExceptions.FileNotFound,
+              );
+            }
+
+            entityPerms =
+              fileEntity.owner === user.UUID
+                ? await this.permissionService.getPermsAsStr('owner')
+                : [];
+          }
+
+          user.permissions = entityPerms.concat(
+            newDestPerms.filter((perm) => entityPerms.indexOf(perm) < 0),
+          );
+
+          break;
+
+        default:
+          user.permissions = await this.permissionService.getPermissions({
+            userUUID: user.UUID,
+            name: name,
+          });
+          break;
       }
 
-      user.permissions = await this.permissionService.getPermissions({
-        userUUID: user.UUID,
-        name: name,
-      });
+      //TODO methods with storageId and disable to access root (/) ^^^^
 
       if (!user.permissions) {
-        const fileSystemEntity = await this.storageService.getFileSystemEntity({
-          where: { name: name },
-          loadRelationIds: { relations: ['owner'] },
-        });
+        const fileSystemEntity =
+          (await this.storageService.findOne({
+            where: { name: name },
+            loadRelationIds: { relations: ['owner'] },
+          })) ??
+          (await this.storageService.findOne({
+            where: {
+              destination: normalize(join(storageId, request.body['path'])),
+            },
+            loadRelationIds: { relations: ['owner'] },
+          }));
 
         if (!fileSystemEntity) {
           throw new ApiException(
@@ -68,13 +216,18 @@ export class PermissionGuardClass implements CanActivate {
           );
         }
 
+        console.log(fileSystemEntity);
+
         user.permissions =
           fileSystemEntity.owner === user.UUID
             ? await this.permissionService.getPermsAsStr('owner')
-            : [];
+            : await this.permissionService.getPermissions({
+                userUUID: user.UUID,
+                name: fileSystemEntity.name,
+              });
       }
 
-      const isAvailable = requiredPerms.some((perm) =>
+      const isAvailable = requiredPerms.every((perm) =>
         user.permissions?.includes(Permissions[perm]),
       );
 

@@ -23,10 +23,11 @@ import { PermissionsService } from '@/permissions/permissions.service';
 import { FileRdo } from '@/storage/rdo/file.rdo';
 import { BaseEntityService } from '@/common/base-entity.service';
 import { RolePerms, Roles } from '@/permissions/roles.constant';
+import { RootDirType } from '@/storage/types/rootDir.type';
 import { uid } from 'uid';
 import { Request } from 'express';
 import { diskStorage } from 'multer';
-import { FindOneOptions, Like, Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { readdir, stat } from 'fs/promises';
 import { extname, join, normalize } from 'path';
 import { createReadStream } from 'fs';
@@ -195,10 +196,6 @@ export class StorageService extends BaseEntityService<
     return { buffer: new StreamableFile(createReadStream(zippedDataPath)) };
   }
 
-  async getFileSystemEntity(options: FindOneOptions<FileSystemEntity>) {
-    return this.filesRepository.findOne(options);
-  }
-
   async createDefaultStorage(user: UserPayload | UserEntity) {
     await this.fsService.mkDir(`${storageConfig.storagePath}/${user.UUID}`);
     await this.fsService.mkDir(
@@ -209,22 +206,35 @@ export class StorageService extends BaseEntityService<
     );
   }
 
-  async mkDir(driveId: string, path: string, dirname: string) {
-    if (
-      !(await this.fsService.checkPathExists(
-        `${storageConfig.storagePath}/${driveId}/${path}/${dirname}`,
-      ))
-    ) {
+  async mkDir(name: string, dirname: string, storageId: string) {
+    const createAtEntity =
+      name === 'root' || name === '/' || name === storageId
+        ? {
+            owner: { UUID: storageId },
+            name: '',
+            destination: storageId,
+            isTrashed: false,
+          }
+        : await this.findOne({
+            where: { name: name },
+            loadRelationIds: { relations: ['owner'] },
+          });
+
+    if (!createAtEntity || createAtEntity.isTrashed) {
       throw new ApiException(
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.NOT_FOUND,
         'FileExceptions',
-        FileExceptions.FileAlreadyExists,
+        FileExceptions.FileNotFound,
       );
     }
 
     if (
       !(await this.fsService.checkPathExists(
-        `${storageConfig.storagePath}/${driveId}/${path}/`,
+        join(
+          storageConfig.storagePath,
+          createAtEntity.destination,
+          createAtEntity.name,
+        ),
       ))
     ) {
       throw new ApiException(
@@ -234,27 +244,24 @@ export class StorageService extends BaseEntityService<
       );
     }
 
-    const user = await this.userService.findByUUID(driveId);
-
-    if (!user) {
-      await new ApiException(
-        HttpStatus.NOT_FOUND,
-        'FileExceptions',
-        FileExceptions.StorageNotFound,
-      );
-    }
-
-    const folderEntity = await this.filesRepository.save({
-      owner: user,
+    const createdFolderEntity = await this.filesRepository.save({
+      owner: createAtEntity.owner,
       originalName: dirname,
       name: uid(FILE_NAMES_SIZE),
-      destination: `${driveId}/${path}/`,
+      destination: normalize(
+        join(createAtEntity.destination, createAtEntity.name),
+      ),
       type: 'folder',
       size: 0,
     });
 
     await this.fsService.mkDir(
-      `${storageConfig.storagePath}/${driveId}/${path}/${folderEntity.name}`,
+      join(
+        storageConfig.storagePath,
+        createAtEntity.destination,
+        createAtEntity.name,
+        createdFolderEntity.name,
+      ),
     );
   }
 
@@ -262,12 +269,12 @@ export class StorageService extends BaseEntityService<
   async moveFile(
     fileEntity: FileSystemEntity,
     operation: 'move',
-    newPath: string,
+    dirname: string,
   ): Promise<void>;
   async moveFile(
     filename: string,
     operation: 'move',
-    newPath: string,
+    dirname: string,
   ): Promise<void>;
   async moveFile(
     fileEntity: FileSystemEntity,
@@ -276,12 +283,13 @@ export class StorageService extends BaseEntityService<
   async moveFile(
     filenameOrEntity: string | FileSystemEntity,
     operation: 'trash' | 'untrash' | 'move' = 'move',
-    newPath = '/',
+    dirname = 'root',
   ): Promise<void> {
-    const fileEntity =
+    const fileEntity: FileSystemEntity =
       typeof filenameOrEntity == 'string'
-        ? await this.getFileSystemEntity({
+        ? await this.findOne({
             where: { name: filenameOrEntity },
+            relations: { owner: true },
           })
         : filenameOrEntity;
 
@@ -293,9 +301,35 @@ export class StorageService extends BaseEntityService<
       );
     }
 
+    if (fileEntity.isTrashed) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'FileExceptions',
+        FileExceptions.FileTrashed,
+      );
+    }
+
     switch (operation) {
       case 'move': {
-        if (fileEntity.isTrashed) {
+        const dirEntity: FileSystemEntity | RootDirType =
+          dirname === 'root' || dirname === '/'
+            ? {
+                owner: fileEntity.owner,
+                name: '',
+                destination: `${fileEntity.owner}/`,
+                isTrashed: false,
+              }
+            : await this.findOne({ where: { name: dirname } });
+
+        if (!dirEntity) {
+          throw new ApiException(
+            HttpStatus.NOT_FOUND,
+            'FileExceptions',
+            FileExceptions.FileNotFound,
+          );
+        }
+
+        if (dirEntity.isTrashed) {
           throw new ApiException(
             HttpStatus.BAD_REQUEST,
             'FileExceptions',
@@ -303,7 +337,7 @@ export class StorageService extends BaseEntityService<
           );
         }
 
-        if (newPath.includes(TRASH_DIRECTORY_NAME)) {
+        if (dirname === TRASH_DIRECTORY_NAME) {
           throw new ApiException(
             HttpStatus.FORBIDDEN,
             'FileExceptions',
@@ -311,8 +345,17 @@ export class StorageService extends BaseEntityService<
           );
         }
 
-        const oldDest = `${storageConfig.storagePath}/${fileEntity.destination}/${fileEntity.name}`;
-        const newDest = `${storageConfig.storagePath}/${fileEntity.owner}/${newPath}/${fileEntity.name}`;
+        const oldDest = join(
+          storageConfig.storagePath,
+          fileEntity.destination,
+          fileEntity.name,
+        );
+        const newDest = join(
+          storageConfig.storagePath,
+          dirEntity.destination,
+          dirEntity.name,
+          fileEntity.name,
+        );
 
         await this.fsService.moveFile(oldDest, newDest);
 
@@ -327,7 +370,7 @@ export class StorageService extends BaseEntityService<
               (elem.destination = normalize(
                 join(
                   fileEntity.owner.UUID,
-                  newPath,
+                  dirname,
                   elem.destination.split('\\').slice(2).join('\\'),
                 ),
               )),
@@ -337,7 +380,7 @@ export class StorageService extends BaseEntityService<
         }
 
         fileEntity.destination = normalize(
-          join(fileEntity.owner.UUID, newPath),
+          join(fileEntity.owner.UUID, dirname),
         );
         await this.filesRepository.save(fileEntity);
         break;
@@ -350,6 +393,7 @@ export class StorageService extends BaseEntityService<
         await this.fsService.moveFile(oldDest, newDest);
         break;
       }
+
       case 'untrash': {
         const oldDest = `${storageConfig.storagePath}/${fileEntity.owner}/${TRASH_DIRECTORY_NAME}/${fileEntity.name}`;
         const newDest = `${storageConfig.storagePath}/${fileEntity.destination}/${fileEntity.name}`;
@@ -361,7 +405,7 @@ export class StorageService extends BaseEntityService<
   }
 
   async trashFile(filename: string) {
-    const fileEntity = await this.getFileSystemEntity({
+    const fileEntity = await this.findOne({
       where: { name: filename },
     });
 
@@ -404,7 +448,7 @@ export class StorageService extends BaseEntityService<
   }
 
   async unTrashFile(filename: string) {
-    const fileEntity = await this.getFileSystemEntity({
+    const fileEntity = await this.findOne({
       where: { name: filename },
     });
 
@@ -447,7 +491,7 @@ export class StorageService extends BaseEntityService<
   async deleteFile(filenameOrEntity: string | FileSystemEntity) {
     const fileSystemEntity =
       typeof filenameOrEntity == 'string'
-        ? await this.getFileSystemEntity({
+        ? await this.findOne({
             where: { name: filenameOrEntity },
           })
         : filenameOrEntity;
@@ -537,38 +581,42 @@ export class StorageService extends BaseEntityService<
 
     return dirContentDto;
   }
-  formatPermEntities(
+
+  async formatPermEntities(
     permissionEntities: PermissionEntity[],
-  ): Promise<FileRdo>[] {
-    return permissionEntities.map(
-      async (permissionEntity): Promise<FileRdo> => {
-        const fileEntity = await this.filesRepository.findOne({
-          where: { name: permissionEntity.name },
-        });
+  ): Promise<FileRdo[]> {
+    const formattedEntities = [] as FileRdo[];
 
-        if (!fileEntity) {
-          const index = permissionEntities.indexOf(permissionEntity);
-          permissionEntities.splice(index, 1);
-          await this.permissionsService.removeOne(permissionEntity);
-        }
+    for (const permissionEntity of permissionEntities) {
+      const fileEntity = await this.filesRepository.findOne({
+        where: { name: permissionEntity.name },
+        loadRelationIds: { relations: ['owner'] },
+      });
 
-        return {
-          driveUUID: fileEntity.owner.UUID,
-          originalName: fileEntity.originalName,
-          name: fileEntity.name,
-          destination: fileEntity.destination,
-          type: fileEntity.type,
-          size: fileEntity.size,
-          isTrashed: fileEntity.isTrashed,
-          extname: extname(fileEntity.originalName),
-          role: <Roles>RolePerms[permissionEntity.permissions] ?? 'custom',
-          permissions: await this.permissionsService.getPermsAsStr(
-            permissionEntity.permissions,
-          ),
-          updatedAt: fileEntity.updatedAt,
-          createdAt: fileEntity.createdAt,
-        };
-      },
-    );
+      if (!fileEntity) {
+        const index = permissionEntities.indexOf(permissionEntity);
+        permissionEntities.splice(index, 1);
+        await this.permissionsService.removeOne(permissionEntity);
+      }
+
+      formattedEntities.push({
+        driveUUID: <string>(<unknown>fileEntity.owner),
+        originalName: fileEntity.originalName,
+        name: fileEntity.name,
+        destination: fileEntity.destination,
+        type: fileEntity.type,
+        size: fileEntity.size,
+        isTrashed: fileEntity.isTrashed,
+        extname: extname(fileEntity.originalName),
+        role: <Roles>RolePerms[permissionEntity.permissions] ?? 'custom',
+        permissions: await this.permissionsService.getPermsAsStr(
+          permissionEntity.permissions,
+        ),
+        updatedAt: fileEntity.updatedAt,
+        createdAt: fileEntity.createdAt,
+      });
+    }
+
+    return formattedEntities;
   }
 }

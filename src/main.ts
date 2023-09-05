@@ -8,10 +8,15 @@ import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  //Network utilities
   app.use(helmet());
+  app.use(cookieParser());
+
+  //API global checkers
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(new ValidationPipe());
-  app.use(cookieParser());
+
   await app.listen(apiServer.port);
 }
 bootstrap();

@@ -5,6 +5,7 @@ import {
   DefaultValuePipe,
   Delete,
   Get,
+  Param,
   ParseBoolPipe,
   ParseFilePipe,
   ParseUUIDPipe,
@@ -26,10 +27,11 @@ import { SetStorageIdInterceptor } from '@/common/interceptors/set-storageid.int
 import { InterceptedUserData } from '@/user/intercepted-userData';
 import { Permissions } from '@/permissions/permissions.constant';
 import { RolePerms, Roles } from '@/permissions/roles.constant';
+import { MoveFileDto } from '@/storage/dto/moveFile.dto';
 import { Response } from 'express';
 import { extname } from 'path';
 
-@Controller('drive')
+@Controller('drive/:id')
 export class StorageController {
   constructor(
     private readonly storageService: StorageService,
@@ -38,7 +40,7 @@ export class StorageController {
 
   //Create Data
   @UseInterceptors(FileInterceptor('file', StorageService.multerOptions))
-  @PermissionGuard(Permissions.Read, Permissions.Write)
+  @PermissionGuard(Permissions.Write)
   @UseInterceptors(SetStorageIdInterceptor)
   @IsVerified()
   @AuthGuard()
@@ -50,16 +52,16 @@ export class StorageController {
       }),
     )
     file: Express.Multer.File,
-    @Query('storageId', new ParseUUIDPipe())
+    @Param('id', new ParseUUIDPipe())
     storageId: string,
-    @Query('path', new DefaultValuePipe('/')) path: string,
+    @Query('dirname', new DefaultValuePipe('root')) dirname: string,
     @Query('isFolder', new DefaultValuePipe(false), new ParseBoolPipe())
     isFolder: boolean,
     @User() user: InterceptedUserData,
   ) {
     await this.storageService.saveFileSystemEntity(
       file,
-      storageId + path,
+      storageId + dirname,
       user,
       isFolder,
     );
@@ -74,9 +76,9 @@ export class StorageController {
     @User() user: InterceptedUserData,
   ) {
     await this.storageService.mkDir(
-      makeDirDto.storageId ?? user.UUID,
-      makeDirDto.path,
-      makeDirDto.dirname,
+      makeDirDto.whereToCreate,
+      makeDirDto.name,
+      user.UUID,
     );
   }
 
@@ -113,7 +115,7 @@ export class StorageController {
   @AuthGuard()
   @Get('get/info')
   async getFileData(@Query('name') filename: string): Promise<FileRdo> {
-    const fileEntity = await this.storageService.getFileSystemEntity({
+    const fileEntity = await this.storageService.findOne({
       where: { name: filename },
       loadRelationIds: { relations: ['owner'] },
     });
@@ -161,11 +163,12 @@ export class StorageController {
   @IsVerified()
   @AuthGuard()
   @Post('move')
-  async moveFile(
-    @Query('name') filename: string,
-    @Query('newPath') newPath: string,
-  ) {
-    return await this.storageService.moveFile(filename, 'move', newPath);
+  async moveFile(@Body() moveFileDto: MoveFileDto) {
+    return await this.storageService.moveFile(
+      moveFileDto.filename,
+      'move',
+      moveFileDto.dirname,
+    );
   }
 
   @PermissionGuard(Permissions.Read)
@@ -191,17 +194,17 @@ export class StorageController {
     await this.storageService.deleteFile(filename);
   }
 
-  @Get('get/shared/')
   @IsVerified()
   @AuthGuard()
+  @Get('get/shared/')
   async getObjUserAllowed(@User() user: InterceptedUserData) {
     const permissionEntities = await this.permissionsService.getAvailable(
       user.UUID,
     );
-    return this.storageService.formatPermEntities(permissionEntities);
+
+    return await this.storageService.formatPermEntities(permissionEntities);
   }
 
-  @PermissionGuard('owner')
   @IsVerified()
   @AuthGuard()
   @Get('download/data')

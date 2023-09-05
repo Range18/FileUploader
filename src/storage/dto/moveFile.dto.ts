@@ -1,11 +1,11 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class MakeDirDto {
+export class MoveFileDto {
   @IsString()
   @IsNotEmpty()
-  whereToCreate: string;
+  filename: string;
 
   @IsString()
   @IsNotEmpty()
-  name: string;
+  dirname: string;
 }

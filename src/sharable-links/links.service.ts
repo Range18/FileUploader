@@ -27,7 +27,7 @@ export class LinksService extends BaseEntityService<LinkEntity> {
   }
 
   async createLink(userUUID: string, createLinkDto: CreateLinkDto) {
-    const fsEntity = await this.storageService.getFileSystemEntity({
+    const fsEntity = await this.storageService.findOne({
       where: { name: createLinkDto.name },
     });
 
@@ -87,7 +87,7 @@ export class LinksService extends BaseEntityService<LinkEntity> {
       );
     }
 
-    const fsEntity = await this.storageService.getFileSystemEntity({
+    const fsEntity = await this.storageService.findOne({
       where: { name: linkEntity.name },
       loadRelationIds: { relations: ['owner'] },
     });
